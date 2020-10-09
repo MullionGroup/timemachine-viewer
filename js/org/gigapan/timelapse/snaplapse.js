@@ -1,49 +1,53 @@
-// @license
-// Redistribution and use in source and binary forms ...
+/**
+ * @license
+ * Redistribution and use in source and binary forms ...
+ *
+ * Class for managing a snaplapse.
+ *
+ * Dependencies:
+ *  org.gigapan.Util
+ *  org.gigapan.timelapse.Timelapse
+ *  Math.uuid (http://www.broofa.com/blog/?p=151)
+ *
+ * Copyright 2011 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Carnegie Mellon University.
+ *
+ * Authors:
+ *  Chris Bartley (bartley@cmu.edu)
+ *  Paul Dille (pdille@andrew.cmu.edu)
+ *  Yen-Chia Hsu (legenddolphin@gmail.com)
+ *  Randy Sargent (randy.sargent@cs.cmu.edu)
+ *
+ */
 
-// Class for managing a snaplapse.
-//
-// Dependencies:
-// * org.gigapan.Util
-// * org.gigapan.timelapse.Timelapse
-// * Math.uuid (http://www.broofa.com/blog/?p=151)
-//
-// Copyright 2011 Carnegie Mellon University. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without modification, are
-// permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this list of
-//    conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list
-//    of conditions and the following disclaimer in the documentation and/or other materials
-//    provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-// FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-// ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// The views and conclusions contained in the software and documentation are those of the
-// authors and should not be interpreted as representing official policies, either expressed
-// or implied, of Carnegie Mellon University.
-//
-// Authors:
-// Chris Bartley (bartley@cmu.edu)
-// Paul Dille (pdille@andrew.cmu.edu)
-// Yen-Chia Hsu (legenddolphin@gmail.com)
-// Randy Sargent (randy.sargent@cs.cmu.edu)
+"use strict";
+
 //
 // VERIFY NAMESPACE
 //
-
-"use strict";
 
 // Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
 var org;
@@ -120,7 +124,6 @@ if (!Math.uuid) {
     // Settings
     var useCustomUI = timelapse.useCustomUI();
     var usePresentationSlider = (mode == "presentation") ? true : false;
-    var disableKeyframeTitle = false;
     var uiEnabled = (mode == "noUI") ? false : true;
     var editorEnabled = settings.editorEnabled;
 
@@ -139,9 +142,7 @@ if (!Math.uuid) {
     var loadKeyframesLength;
     var rootAppURL = org.gigapan.Util.getRootAppURL();
 
-    // Because the viewer on Google Earth Engine is not updated yet,
-    // we need to use disableKeyframeTitle flag for backward compatibility.
-    var TOUR_SHARING_VERSION = 6;
+    var TOUR_SHARING_VERSION = 7;
 
     // Loop Dwell
     var doLoopDwellTimeout;
@@ -155,7 +156,7 @@ if (!Math.uuid) {
     var defaultLoopTimes = 2;
     var doExtraStartDwell = false;
     var extraStartDwell = 0;
-    var startingPlaybackRate = 1;
+    var startingPlaybackRate;
 
     var _clearSnaplapse = function() {
       if (thisObj.isPlaying) {
@@ -395,8 +396,9 @@ if (!Math.uuid) {
     });
 
     this.getAsUrlString = function(desiredKeyframes) {
-      if (desiredKeyframes == undefined)
+      if (desiredKeyframes == undefined) {
         desiredKeyframes = keyframes;
+      }
       try {
         var encoder = new org.gigapan.timelapse.UrlEncoder();
         var tmJSON = timelapse.getTmJSON();
@@ -426,40 +428,79 @@ if (!Math.uuid) {
           }
           // Frame Number
           encoder.write_uint(Math.floor(desiredKeyframes[i]['time'] * timelapse.getFps()));
-          var viewCenter;
-          if (tmJSON['projection-bounds']) {
-            var projection = timelapse.getProjection();
-            // Lat/Lng center view
-            viewCenter = timelapse.pixelBoundingBoxToPixelCenter(desiredKeyframes[i]['bounds']);
-            var latLng = projection.pointToLatlng({
-              x: viewCenter.x,
-              y: viewCenter.y
-            });
-            encoder.write_lat(latLng.lat);
-            encoder.write_lon(latLng.lng);
+          // Playback time
+          // Note: This is redundant in regards to tours if we are keeping track of frame number. However, this code is used for EarthTime,
+          // where it's loaded across datasets with different fps, so when we decode the frame number the time we get can change depending upon
+          // what dataset is up. So we also encode playback time.
+          encoder.write_udecimal(desiredKeyframes[i]['time'], 2);
+          var viewCenter, zoom;
+          // Bounds & Zoom
+          if (typeof(desiredKeyframes[i].originalView) !== "undefined" && desiredKeyframes[i].originalView.center) {
+            if (TOUR_SHARING_VERSION >= 7) {
+              // Did we encode a bounding box? False
+              encoder.write_uint(0);
+            }
+            viewCenter = desiredKeyframes[i].originalView.center;
+            if (typeof viewCenter.lat !== "undefined") {
+              // Lat/Lng center view
+              encoder.write_lat(viewCenter.lat);
+              encoder.write_lon(viewCenter.lng);
+            } else {
+              // x/y center view
+              encoder.write_udecimal(viewCenter.x.toFixed(5), 5);
+              encoder.write_udecimal(viewCenter.y.toFixed(5), 5);
+            }
+            zoom = desiredKeyframes[i].originalView.zoom;
+            encoder.write_udecimal(zoom, 2);
           } else {
-            // x/y center view
-            viewCenter = timelapse.pixelBoundingBoxToPixelCenter(desiredKeyframes[i]['bounds']);
-            encoder.write_udecimal(viewCenter.x.toFixed(5), 5);
-            encoder.write_udecimal(viewCenter.y.toFixed(5), 5);
+            if (TOUR_SHARING_VERSION >= 7) {
+              // Did we encode a bounding box? True
+              encoder.write_uint(1);
+              encoder.write_uint(desiredKeyframes[i]['bounds']['xmin']);
+              encoder.write_uint(desiredKeyframes[i]['bounds']['ymin']);
+              encoder.write_uint(desiredKeyframes[i]['bounds']['xmax']);
+              encoder.write_uint(desiredKeyframes[i]['bounds']['ymax']);
+            } else {
+              viewCenter = timelapse.pixelBoundingBoxToPixelCenter(desiredKeyframes[i]['bounds']);
+              if (tmJSON['projection-bounds']) {
+                var projection = timelapse.getProjection();
+                // Lat/Lng center view
+                var latLng = projection.pointToLatlng({
+                  x: viewCenter.x,
+                  y: viewCenter.y
+                });
+                encoder.write_lat(latLng.lat);
+                encoder.write_lon(latLng.lng);
+              } else {
+                // x/y center view
+                encoder.write_udecimal(viewCenter.x.toFixed(5), 5);
+                encoder.write_udecimal(viewCenter.y.toFixed(5), 5);
+              }
+              zoom = timelapse.scaleToZoom(viewCenter.scale);
+              encoder.write_udecimal(zoom, 2);
+            }
           }
-          var zoom = timelapse.scaleToZoom(viewCenter.scale);
-          encoder.write_udecimal(zoom, 2);
           // Keyframe description
           encoder.write_string(desiredKeyframes[i]['unsafe_string_description']);
-          if (!disableKeyframeTitle) {
-            // Keyframe title
-            encoder.write_string(desiredKeyframes[i]['unsafe_string_frameTitle']);
-          }
+          // Keyframe title
+          encoder.write_string(desiredKeyframes[i]['unsafe_string_frameTitle']);
           // Keframe annotation box title
           // The title above is what is shown on the waypoint slider, whereas this one
           // is what appears in the annotation box.
           encoder.write_string(desiredKeyframes[i]['unsafe_string_annotationBoxTitle']);
           // Layers asssoicated with a keyfram
           encoder.write_string(String(desiredKeyframes[i]['layers']));
+          // Begin Time
+          var beginTime = desiredKeyframes[i]['beginTime'] !== "" ? String(desiredKeyframes[i]['beginTime']) : "";
+          encoder.write_string(beginTime);
           // End Time
           var endTime = desiredKeyframes[i]['endTime'] !== "" ? String(desiredKeyframes[i]['endTime']) : "";
           encoder.write_string(endTime);
+          // Dwell Times
+          var startDwell = desiredKeyframes[i]['startDwell'];
+          encoder.write_udecimal(startDwell, 2);
+          var endDwell = desiredKeyframes[i]['endDwell'];
+          encoder.write_udecimal(endDwell, 2);
         }
         // Tour title
         var title = $("#" + composerDivId + " .saveTimewarpWindow_tourTitleInput").val();
@@ -525,57 +566,71 @@ if (!Math.uuid) {
             frame["speed"] = encoder.read_uint();
             frame["duration"] = null;
           }
-          // TODO:
-          // If the embed from which the tour was created has a different dwell time
-          // than the embed the tour is being run on, then playback may look slightly different.
-          // These waitStart/waitEnd properties below are not used anymore and are here as legacy
-          // code for rendering tours to videos. While these have been refactored, dwell time is still
-          // used during tour playback, but we always use the value set by the current embed, not what
-          // embed the tour may have come from.
-          frame["waitStart"] = timelapse.getStartDwell();
-          frame["waitEnd"] = timelapse.getEndDwell();
           // Decode frame number
           var frameNumber = encoder.read_uint();
-          frame["time"] = (frameNumber + timelapse.getTimePadding()) / fps;
+          // Decode playback time
+          // Note: This is redundant in regards to tours if we are keeping track of frame number. However, this code is used for EarthTime,
+          // where it's loaded across datasets with different fps, so when we decode the frame number the time we get can change depending upon
+          // what dataset is up. So we use the encoded playback time rather than compute it from frame number and current dataset fps.
+          var time;
+          if (version >= 7) {
+            time = UTIL.truncate(encoder.read_udecimal(2), 2);
+          } else {
+            time = (frameNumber + timelapse.getTimePadding()) / fps;
+          }
+          frame["time"] = time;
           frame["captureTime"] = captureTimes[frameNumber];
-          // Decode center
-          var pointCenter;
-          if (tmJSON['projection-bounds']) {
-            var projection = timelapse.getProjection();
-            var latLng = {lat: encoder.read_lat(), lng: encoder.read_lon()};
-            pointCenter = projection.latlngToPoint({
-              lat: latLng.lat,
-              lng: latLng.lng
-            });
+          // Decode bounds
+          var bbox, originalView;
+          var isViewABoundingBox = false;
+          // Decode whether we encoded the view as a bounding box
+          if (version >= 7) {
+            isViewABoundingBox = encoder.read_uint();
+          }
+          if (isViewABoundingBox) {
+            bbox = {};
+            bbox.xmin = encoder.read_uint();
+            bbox.ymin = encoder.read_uint();
+            bbox.xmax = encoder.read_uint();
+            bbox.ymax = encoder.read_uint();
+            originalView = {bbox : bbox};
           } else {
-            var point = {x: encoder.read_udecimal(5), y: encoder.read_udecimal(5)};
-            pointCenter = {
-              x: point.x,
-              y: point.y
+            var pointCenter;
+            if (tmJSON['projection-bounds']) {
+              var projection = timelapse.getProjection();
+              var latLng = {lat: UTIL.truncate(encoder.read_lat(), 5), lng: UTIL.truncate(encoder.read_lon(), 5)};
+              pointCenter = projection.latlngToPoint({
+                lat: latLng.lat,
+                lng: latLng.lng
+              });
+            } else {
+              var point = {x: UTIL.truncate(encoder.read_udecimal(5), 5), y: UTIL.truncate(encoder.read_udecimal(5), 5)};
+              pointCenter = {
+                x: point.x,
+                y: point.y
+              };
+            }
+            // Decode zoom
+            var zoom = UTIL.truncate(encoder.read_udecimal(2), 2);
+            // Store original center view for use with waypoint slider
+            if (tmJSON['projection-bounds']) {
+              originalView = {center : {lat : latLng.lat, lng : latLng.lng}, zoom : zoom};
+            } else {
+              originalView = {center : {x : point.x, y : point.y}, zoom : zoom};
+            }
+            var centerView = {
+              "x": pointCenter.x,
+              "y": pointCenter.y,
+              "scale": timelapse.zoomToScale(zoom)
             };
+            bbox = timelapse.pixelCenterToPixelBoundingBoxView(centerView).bbox;
           }
-          // Decode zoom
-          var zoom = encoder.read_udecimal(2);
-          // Store original center view for use with waypoint slider
-          if (tmJSON['projection-bounds']) {
-            var originalView = {center : {lat : latLng.lat, lng : latLng.lng}, zoom : zoom};
-          } else {
-            var originalView = {center : {x : point.x, y : point.y}, zoom : zoom};
-          }
-          var centerView = {
-            "x": pointCenter.x,
-            "y": pointCenter.y,
-            "scale": timelapse.zoomToScale(zoom)
-          };
-          var bbox = timelapse.pixelCenterToPixelBoundingBoxView(centerView).bbox;
-
           frame["bounds"] = {};
           frame["bounds"]["xmin"] = bbox.xmin;
           frame["bounds"]["ymin"] = bbox.ymin;
           frame["bounds"]["xmax"] = bbox.xmax;
           frame["bounds"]["ymax"] = bbox.ymax;
           frame["originalView"] = originalView;
-
           // Decode keyframe subtitle
           frame["unsafe_string_description"] = encoder.read_unsafe_string();
           if (version >= 4) {
@@ -583,7 +638,6 @@ if (!Math.uuid) {
             frame["unsafe_string_frameTitle"] = encoder.read_unsafe_string();
           }
           frame["is-description-visible"] = (frame["unsafe_string_description"] || frame["unsafe_string_frameTitle"]) ? true : false;
-
           if (version >= 5) {
             // Decode annotation box title
             frame["unsafe_string_annotationBoxTitle"] = encoder.read_unsafe_string();
@@ -591,9 +645,22 @@ if (!Math.uuid) {
             frame["layers"] = encoder.read_unsafe_string().split(",");
           }
           if (version >= 6) {
-            // Decode end frame number
+            // Decode start frame time
+            //
+            // Note that technically the 'time' param should have dealt with this, but it is never
+            // encoded and instead we derive it from the frame number, which is always an integer.
+            // However, we may want to be inbetween frames and that's not possible without this
+            // beginTime param. Plus, 'time' was strictly video time and beginTime can be a date.
+            var beginTime = parseFloat(encoder.read_unsafe_string());
+            frame["beginTime"] = isNaN(beginTime) ? -1 : String(beginTime);
+
+            // Decode end frame time
             var endTime = parseFloat(encoder.read_unsafe_string());
-            frame["endTime"] = isNaN(endTime) ? -1 : endTime;
+            frame["endTime"] = isNaN(endTime) ? -1 : String(endTime);
+          }
+          if (version >= 7) {
+            frame["startDwell"] = encoder.read_udecimal(2);
+            frame["endDwell"] = encoder.read_udecimal(2);
           }
           keyframes.push(frame);
         }
@@ -638,8 +705,8 @@ if (!Math.uuid) {
       snaplapseJSON['snaplapse']['fps'] = timelapse.getFps();
       snaplapseJSON['snaplapse']['keyframes'] = keyframes;
       for (var i = 0; i < keyframes.length; i++) {
-        snaplapseJSON['snaplapse']['keyframes'][i]['waitStart'] = timelapse.getStartDwell();
-        snaplapseJSON['snaplapse']['keyframes'][i]['waitEnd'] = timelapse.getEndDwell();
+        snaplapseJSON['snaplapse']['keyframes'][i]['startDwell'] = timelapse.getStartDwell();
+        snaplapseJSON['snaplapse']['keyframes'][i]['endDwell'] = timelapse.getEndDwell();
       }
       return JSON.stringify(snaplapseJSON, null, 3);
     };
@@ -661,10 +728,8 @@ if (!Math.uuid) {
           var keyframe = loadJSON['snaplapse']['keyframes'][loadIndex];
           if (json != undefined)
             loadKeyframesLength = loadJSON['snaplapse']['keyframes'].length;
-          if (typeof keyframe['time'] != 'undefined' && typeof keyframe['bounds'] != 'undefined' && typeof keyframe['bounds']['xmin'] != 'undefined' && typeof keyframe['bounds']['ymin'] != 'undefined' && typeof keyframe['bounds']['xmax'] != 'undefined' && typeof keyframe['bounds']['ymax'] != 'undefined') {
-            // NOTE: if is-description-visible is undefined, then we define it as *true* in order to maintain
-            // backward compatibility with older time warps which don't have this property.
-            this.recordKeyframe(null, keyframe['time'], keyframe['bounds'], keyframe['unsafe_string_description'], ( typeof keyframe['is-description-visible'] == 'undefined') ? true : keyframe['is-description-visible'], keyframe['duration'], true, keyframe['buildConstraint'], keyframe['speed'], keyframe['loopTimes'], loadKeyframesLength, keyframe['unsafe_string_frameTitle'], keyframe['originalView'], keyframe['layers'], keyframe['unsafe_string_annotationBoxTitle'], keyframe['endTime']);
+          if (keyframe && typeof keyframe['time'] != 'undefined' && typeof keyframe['bounds'] != 'undefined' && typeof keyframe['bounds']['xmin'] != 'undefined' && typeof keyframe['bounds']['ymin'] != 'undefined' && typeof keyframe['bounds']['xmax'] != 'undefined' && typeof keyframe['bounds']['ymax'] != 'undefined') {
+            this.recordKeyframe(null, true, loadKeyframesLength, keyframe);
           } else {
             UTIL.error("Ignoring invalid keyframe during snaplapse load.");
           }
@@ -683,34 +748,128 @@ if (!Math.uuid) {
       return true;
     };
 
-    // Create multiple presentation JSON strings based on themes
-    var CSVToJSONList = function(csvData) {
+    // Create multiple presentation JSON strings based on stories categoried by themes
+    var CSVToJSONList = function(csvArray) {
+      // V1: No themes were given, just waypoints
+      // V2: Themes (#) were given, with waypoints assoicated with them
+      // V3: Themes (#) are given, with associated designated stories (##) that then have accompanying waypoints
+      // V4: Data is read by column heading and not by index
       var jsonList = {};
-      var csvArray = csvData.split("\n");
+      var stories = {};
       var themeTitle;
       var themeId;
-      var rowString = "\n";
+      var themeEnabled;
+      var storyTitle;
+      var storyId;
+      var storyDescription;
+      var storyEnabled;
+      var waypointCSVCollection = [];
       var rowCount = 0;
-      // First row contains headings
-      for (var i = 1; i < csvArray.length; i++) {
-        var csvLineAsArray = csvArray[i].split("\t");
-        var waypointTitle = csvLineAsArray[0].trim();
-        // Themes in a spreadsheet are designated by a hash symbol
-        if (waypointTitle.charAt(0) == "#") {
+      var mainShareView = "";
+      var previousMainShareView = "";
+      var mainThemeShareView = "";
+      var mainThemeDescription = "";
+      var previousMainThemeShareView = "";
+      var previousMainThemeDescription = "";
+      var storyAuthor = "";
+      var previousStoryAuthor = "";
+
+      for (var i = 0; i < csvArray.length; i++) {
+        var csvRow = csvArray[i];
+        var waypointTitle = csvRow['Waypoint Title'] ? csvRow['Waypoint Title'].trim() : "";
+        var waypointText = csvRow['Annotation Text'] ? csvRow['Annotation Text'].trim() : "";
+        // Edge case where first line after headings is blank
+        if (i == 1 && waypointTitle == "") continue;
+        // Themes in a spreadsheet are designated by a single hash symbol
+        if (waypointTitle.charAt(0) == "#" && waypointTitle.charAt(1) != "#") {
+          //console.log('found theme');
+          if (mainThemeShareView) {
+            previousMainThemeShareView = mainThemeShareView;
+          }
+          if (mainThemeDescription) {
+            previousMainThemeDescription = mainThemeDescription;
+          }
+          mainThemeShareView = csvRow['Share View'].trim();
+          mainThemeDescription = csvRow['Annotation Text'] ? csvRow['Annotation Text'].trim() : "";
           if (rowCount > 0) {
-            jsonList[themeId] = {
-              themeTitle : themeTitle,
-              waypoints : CSVToJSON(rowString.replace(/\n$/, ""))
+            //console.log('adding theme to data struct', themeId);
+            // It is possible that we have no designated stories and instead we are treating every story like a theme (old way of doing this)
+            if (!storyTitle) {
+              storyTitle = "Default";
+              storyId = "default";
             }
-            rowString = "\n";
+            // Add the last found story to the current theme if it is not already in there
+            if (!stories[storyId]) {
+              stories[storyId] = {
+                enabled: storyEnabled,
+                storyTitle: storyTitle,
+                storyDescription: storyDescription,
+                storyAuthor: storyAuthor,
+                mainShareView: mainShareView,
+                waypoints : CSVToJSON(waypointCSVCollection)
+              }
+            }
+            // Add the theme to the main list
+            jsonList[themeId] = {
+              enabled: themeEnabled,
+              themeTitle : themeTitle,
+              mainThemeShareView : previousMainThemeShareView,
+              mainThemeDescription : previousMainThemeDescription,
+              stories : stories
+            }
+            waypointCSVCollection = [];
             rowCount = 0;
           }
           themeTitle = waypointTitle.slice(1);
+          // Include legacy case of no 'Enabled' column
+          themeEnabled = typeof(csvRow['Enabled']) === "undefined" || csvRow['Enabled'].trim().toLowerCase() === "true" ? true : false;
+
           // Sanitize
           themeId = themeTitle.replace(/ /g,"_").replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase();
+          stories = {};
+          storyTitle = "";
+          storyDescription = "";
+        // Stories in a spreadsheet are designated by a double hash symbol
+        } else if (waypointTitle.substring(0,2) == "##") {
+          if (mainShareView) {
+            previousMainShareView = mainShareView
+          }
+          if (storyAuthor) {
+            previousStoryAuthor = storyAuthor
+          }
+          mainShareView = csvRow['Share View'].trim();
+          storyAuthor = csvRow['Author'] ? csvRow['Author'].trim() : "";
+
+          if (rowCount > 0) {
+            //console.log('adding story to data struct', storyId);
+            stories[storyId] = {
+              enabled: storyEnabled,
+              storyTitle: storyTitle,
+              storyDescription: storyDescription,
+              storyAuthor: previousStoryAuthor,
+              mainShareView: previousMainShareView,
+              waypoints : CSVToJSON(waypointCSVCollection)
+            }
+            waypointCSVCollection = [];
+            rowCount = 0;
+          }
+          storyTitle = csvRow['Annotation Title'] ? csvRow['Annotation Title'].trim() : waypointTitle.slice(2);
+          storyDescription = waypointText.trim();
+          // Include legacy case of no 'Enabled' column
+          storyEnabled = typeof(csvRow['Enabled']) === "undefined" || csvRow['Enabled'].trim().toLowerCase() === "true" ? true : false;
+
+          // Sanitize
+          storyId = waypointTitle.slice(2).replace(/ /g,"_").replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase();
+
+          if (storyDescription && mainShareView) {
+            rowCount++;
+            csvRow['Waypoint Title'] = csvRow['Waypoint Title'].replace('#', '');
+            waypointCSVCollection.push(csvRow);
+          }
         } else {
+          //console.log('found waypoint for story');
           rowCount++;
-          rowString += csvArray[i] + "\n";
+          waypointCSVCollection.push(csvRow);
         }
       }
       // Legacy case where we may not have a theme set
@@ -719,17 +878,37 @@ if (!Math.uuid) {
         themeId = "default";
       }
 
+      // It is possible that we have no designated stories and instead we are treating every story like a theme (old way of doing this)
+      if (!storyTitle) {
+        storyTitle = "Default";
+        storyId = "default";
+      }
+
+      // Add the last found story to the last theme if it is not already in there
+      if (!stories[storyId]) {
+        stories[storyId] = {
+          enabled: storyEnabled,
+          storyTitle : storyTitle,
+          storyDescription: storyDescription,
+          storyAuthor : storyAuthor,
+          mainShareView : mainShareView,
+          waypoints : CSVToJSON(waypointCSVCollection)
+        }
+      }
       // Last theme found
       jsonList[themeId] = {
+        enabled : themeEnabled,
         themeTitle : themeTitle,
-        waypoints: CSVToJSON(rowString.replace(/\n$/, ""))
+        mainThemeShareView : mainThemeShareView,
+        mainThemeDescription : mainThemeDescription,
+        stories: stories
       }
 
       return jsonList;
     };
     this.CSVToJSONList = CSVToJSONList;
 
-    var CSVToJSON = function(csvData) {
+    var CSVToJSON = function(csvArray) {
       // The csv format assumes the following columns:
       // Waypoint Title, Annotation Title, Annotation Text, Share View
       try {
@@ -754,12 +933,9 @@ if (!Math.uuid) {
         snaplapseJSON['snaplapse']['fps'] = fps;
         var keyframes = [];
 
-        var csvArray = csvData.split("\n");
-
-        // First row contains headings
-        for (var i = 1; i < csvArray.length; i++) {
-          var csvLineAsArray = csvArray[i].split("\t");
-          var unsafe_matchURL = csvLineAsArray[3].match(/#(.+)/);
+        for (var i = 0; i < csvArray.length; i++) {
+          var csvRow = csvArray[i];
+          var unsafe_matchURL = csvRow['Share View'].match(/#(.+)/);
           // Ignore the entry if there is no share view
           if (!unsafe_matchURL) continue;
           var unsafeHashObj = UTIL.unpackVars(unsafe_matchURL[1]);
@@ -768,33 +944,42 @@ if (!Math.uuid) {
           frame["buildConstraint"] = "speed";
           frame["loopTimes"] = 2;
           frame["duration"] = null;
-          frame["speed"] = unsafeHashObj.hasOwnProperty("ps") ? parseFloat(unsafeHashObj.ps) : 50;
-          frame["waitStart"] = timelapse.getStartDwell();
-          frame["waitEnd"] = timelapse.getEndDwell();
+          frame["startDwell"] = unsafeHashObj.hasOwnProperty("startDwell") ? parseFloat(unsafeHashObj.startDwell) : 0;
+          frame["endDwell"] = unsafeHashObj.hasOwnProperty("endDwell") ? parseFloat(unsafeHashObj.endDwell) : 0;
           frame["time"] = unsafeHashObj.hasOwnProperty("t") ? parseFloat(unsafeHashObj.t) : 0;
-          frame["endTime"] = unsafeHashObj.et ? parseFloat(unsafeHashObj.et) : "";
+          frame["beginTime"] = unsafeHashObj.hasOwnProperty("bt") ? parseFloat(unsafeHashObj.bt) : "";
+          frame["endTime"] = unsafeHashObj.hasOwnProperty("et") ? parseFloat(unsafeHashObj.et) : "";
+          frame["speed"] = unsafeHashObj.hasOwnProperty("ps") ? parseFloat(unsafeHashObj.ps) : ((frame["beginTime"] == frame["endTime"] && frame["beginTime"] != "") ? 0 : 50);
           var frameNumber = Math.floor(frame["time"] * timelapse.getFps());
           frame["captureTime"] = captureTimes[frameNumber];
-
           var view = unsafeHashObj.hasOwnProperty("v") ? timelapse.unsafeViewToView(unsafeHashObj.v.split(",")) : null;
-          if (tmJSON['projection-bounds']) {
-            var bbox = timelapse.pixelCenterToPixelBoundingBoxView(view).bbox;
-          } else {
-            var bbox = timelapse.pixelCenterToPixelBoundingBoxView(timelapse.latLngBoundingBoxToPixelCenter(view)).bbox;
+          if (!view) {
+            UTIL.error("Invalid view in snaplapse share link at keyframe=[" + (i - 1) + "]. Skipping.");
+            continue;
           }
-
+          var bbox;
+          if (view.center) {
+            if (tmJSON['projection-bounds']) {
+              bbox = timelapse.pixelCenterToPixelBoundingBoxView(view).bbox;
+            } else {
+              bbox = timelapse.pixelCenterToPixelBoundingBoxView(timelapse.latLngBoundingBoxToPixelCenter(view)).bbox;
+            }
+          } else {
+            bbox = view.bbox;
+          }
           frame["bounds"] = {};
           frame["bounds"]["xmin"] = bbox.xmin;
           frame["bounds"]["ymin"] = bbox.ymin;
           frame["bounds"]["xmax"] = bbox.xmax;
           frame["bounds"]["ymax"] = bbox.ymax;
           frame["originalView"] = view;
-          frame["unsafe_string_description"] = csvLineAsArray[2] ? csvLineAsArray[2].trim() : "";
-          frame["unsafe_string_frameTitle"] = csvLineAsArray[0] ? csvLineAsArray[0].trim() : "";
-          frame["unsafe_string_annotationBoxTitle"] = csvLineAsArray[1] ? csvLineAsArray[1].trim() : "";
+          frame["unsafe_string_description"] = csvRow['Annotation Text'] ? csvRow['Annotation Text'].trim() : "";
+          frame["unsafe_string_frameTitle"] = csvRow['Waypoint Title'] ? csvRow['Waypoint Title'].trim() : "";
+          frame["unsafe_string_thumbnailPath"] = csvRow['Thumbnail Path'] ? csvRow['Thumbnail Path'].trim() : "";
+          frame["unsafe_string_annotationBoxTitle"] = csvRow['Annotation Title'] ? csvRow['Annotation Title'].trim() : "";
           frame["layers"] = unsafeHashObj.l ? unsafeHashObj.l.split(",") : [""];
           frame["is-description-visible"] = (frame["unsafe_string_description"] || frame["unsafe_string_frameTitle"]) ? true : false;
-          var annotationPicturePath = csvLineAsArray[4] ? csvLineAsArray[4].trim() : "";
+          var annotationPicturePath = csvRow['Annotation Picture Path'] ? csvRow['Annotation Picture Path'].trim() : "";
           // TODO: Revisit how we check if this column actually contains an image
           if (annotationPicturePath.lastIndexOf('.jpg', annotationPicturePath.length - 4) === annotationPicturePath.length - 4 || annotationPicturePath.lastIndexOf('.png', annotationPicturePath.length - 4) === annotationPicturePath.length - 4)
             frame["unsafe_string_annotationPicPath"] = annotationPicturePath;
@@ -811,13 +996,9 @@ if (!Math.uuid) {
 
     this.setKeyframeTitleState = function(state) {
       if (state == "disable") {
-        disableKeyframeTitle = true;
-        TOUR_SHARING_VERSION = 3;
         $("#" + composerDivId + " .keyframe_title_container").hide();
         $("#" + composerDivId + " .snaplapse_keyframe_list_item_title").hide();
       } else {
-        disableKeyframeTitle = false;
-        TOUR_SHARING_VERSION = 6;
         $("#" + composerDivId + " .keyframe_title_container").show();
         $("#" + composerDivId + " .snaplapse_keyframe_list_item_title").show();
       }
@@ -825,38 +1006,43 @@ if (!Math.uuid) {
 
     this.duplicateKeyframe = function(idOfSourceKeyframe) {
       var keyframeCopy = cloneFrame(keyframesById[idOfSourceKeyframe]);
-      this.recordKeyframe(idOfSourceKeyframe, keyframeCopy['time'], keyframeCopy['bounds'], keyframeCopy['unsafe_string_description'], keyframeCopy['is-description-visible'], keyframeCopy['duration'], false, keyframeCopy['buildConstraint'], keyframeCopy['speed'], keyframeCopy['loopTimes'], undefined, keyframeCopy['unsafe_string_frameTitle'], undefined, keyframeCopy['layers'], keyframeCopy['unsafe_string_annotationBoxTitle'], keyframeCopy['endTime']);
+      this.recordKeyframe(idOfSourceKeyframe, false, undefined, keyframeCopy);
     };
 
-    this.recordKeyframe = function(idOfKeyframeToAppendAfter, time, bounds, description, isDescriptionVisible, duration, isFromLoad, buildConstraint, speed, loopTimes, loadKeyframesLength, frameTitle, originalView, layers, frameAnnotationBoxTitle, endTime) {
-      if (typeof bounds == 'undefined') {
-        bounds = timelapse.getBoundingBoxForCurrentView();
+    this.recordKeyframe = function(idOfKeyframeToAppendAfter, isFromLoad, loadKeyframesLength, keyframeContents) {
+      keyframeContents = keyframeContents ? keyframeContents : {};
+      if (typeof(keyframeContents['bounds']) == 'undefined') {
+        keyframeContents['bounds'] = timelapse.getBoundingBoxForCurrentView();
       }
       var isKeyframeFromLoad = ( typeof isFromLoad == 'undefined') ? false : isFromLoad;
-
       // Create the new keyframe
       var keyframeId = Math.uuid(20);
       var keyframe = {};
       keyframe['id'] = keyframeId;
-      keyframe['buildConstraint'] = ( typeof buildConstraint == 'undefined') ? "speed" : buildConstraint;
-      keyframe['loopTimes'] = loopTimes;
-      keyframe['speed'] = speed;
-      keyframe['time'] = org.gigapan.timelapse.Snaplapse.normalizeTime(( typeof time == 'undefined') ? timelapse.getCurrentTime() : time);
-      keyframe['endTime'] = endTime;
+      keyframe['buildConstraint'] = (typeof(keyframeContents['buildConstraint']) == 'undefined') ? "speed" : keyframeContents['buildConstraint'];
+      keyframe['loopTimes'] = keyframeContents['loopTimes'];
+      keyframe['speed'] = keyframeContents['speed'];
+      keyframe['time'] = org.gigapan.timelapse.Snaplapse.normalizeTime((typeof(keyframeContents['time']) == 'undefined') ? timelapse.getCurrentTime() : keyframeContents['time']);
+      keyframe['beginTime'] = keyframeContents['beginTime'] || "";
+      keyframe['endTime'] = keyframeContents['endTime'] || "";
+      keyframe['startDwell'] = keyframeContents['startDwell'] || "";
+      keyframe['endDwell'] = keyframeContents['endDwell'] || "";
       var frameNumber = Math.floor(keyframe['time'] * timelapse.getFps());
       keyframe['captureTime'] = captureTimes[frameNumber];
       keyframe['bounds'] = {};
-      keyframe['bounds'].xmin = bounds.xmin;
-      keyframe['bounds'].ymin = bounds.ymin;
-      keyframe['bounds'].xmax = bounds.xmax;
-      keyframe['bounds'].ymax = bounds.ymax;
-      keyframe['duration'] = sanitizeDuration(duration);
-      keyframe['unsafe_string_description'] = ( typeof description == 'undefined') ? '' : description;
-      keyframe['unsafe_string_frameTitle'] = ( typeof frameTitle == 'undefined') ? '' : frameTitle;
-      keyframe['is-description-visible'] = ( typeof isDescriptionVisible == 'undefined') ? false : isDescriptionVisible;
-      if (originalView) {
-        keyframe['originalView'] = originalView;
-      } else {
+      keyframe['bounds'].xmin = keyframeContents['bounds'].xmin;
+      keyframe['bounds'].ymin = keyframeContents['bounds'].ymin;
+      keyframe['bounds'].xmax = keyframeContents['bounds'].xmax;
+      keyframe['bounds'].ymax = keyframeContents['bounds'].ymax;
+      keyframe['duration'] = sanitizeDuration(keyframeContents['duration']);
+      keyframe['unsafe_string_description'] = (typeof(keyframeContents['unsafe_string_description']) == 'undefined') ? '' : keyframeContents['unsafe_string_description'];
+      keyframe['unsafe_string_frameTitle'] = (typeof(keyframeContents['unsafe_string_frameTitle']) == 'undefined') ? '' : keyframeContents['unsafe_string_frameTitle'];
+      keyframe['unsafe_string_thumbnailPath'] = (typeof(keyframeContents['unsafe_string_thumbnailPath']) == 'undefined') ? '' : keyframeContents['unsafe_string_thumbnailPath'];
+      // NOTE: if is-description-visible is undefined, then we define it as *true* in order to maintain
+      // backward compatibility with older time warps which don't have this property.
+      keyframe['is-description-visible'] = (typeof(keyframeContents['is-description-visible']) == 'undefined') ? true : keyframeContents['is-description-visible'];
+      var originalView = keyframeContents['originalView'];
+      if (!originalView) {
         if (timelapse.getTmJSON()['projection-bounds']) {
           var projection = timelapse.getProjection();
           var viewCenter = timelapse.pixelBoundingBoxToPixelCenter(keyframe['bounds']);
@@ -865,16 +1051,16 @@ if (!Math.uuid) {
             y: viewCenter.y
           });
           var zoom = timelapse.scaleToZoom(viewCenter.scale);
-          var originalView = {center : {lat : latLng.lat, lng : latLng.lng}, zoom : zoom};
+          originalView = {center : {lat : latLng.lat, lng : latLng.lng}, zoom : zoom};
         } else {
           var viewCenter = timelapse.pixelBoundingBoxToPixelCenter(keyframe['bounds']);
           var zoom = timelapse.scaleToZoom(viewCenter.scale);
-          var originalView = {center : {x : viewCenter.x, y : viewCenter.y}, zoom : zoom};
+          originalView = {center : {x : viewCenter.x, y : viewCenter.y}, zoom : zoom};
         }
       }
       keyframe['originalView'] = originalView;
-      keyframe['layers'] = layers;
-      keyframe['unsafe_string_annotationBoxTitle'] = ( typeof frameTitle == 'undefined') ? '' : frameAnnotationBoxTitle;
+      keyframe['layers'] = keyframeContents['layers'] || "";
+      keyframe['unsafe_string_annotationBoxTitle'] = (typeof(keyframeContents['unsafe_string_annotationBoxTitle']) == 'undefined') ? '' : keyframeContents['unsafe_string_annotationBoxTitle'];
 
       // Determine where the new keyframe will be inserted
       var insertionIndex = keyframes.length;
@@ -889,8 +1075,6 @@ if (!Math.uuid) {
       keyframes.splice(insertionIndex, 0, null);
       keyframes[insertionIndex] = keyframe;
       keyframesById[keyframeId] = keyframe;
-
-      // We build the keyframe and compute all parameters
 
       // Builds the current keyframe interval
       if (!isKeyframeFromLoad)
@@ -1123,8 +1307,10 @@ if (!Math.uuid) {
     };
 
     var cloneFrame = function(frame) {
-      return $.extend({}, frame);
+      return $.extend(true, {}, frame);
     };
+    this.cloneFrame = cloneFrame;
+
 
     var setCurrentKeyframeInterval = function(newKeyframeInterval) {
       UTIL.log("setCurrentKeyframeInterval(" + newKeyframeInterval + ")");
@@ -1133,7 +1319,7 @@ if (!Math.uuid) {
 
       if (currentKeyframeInterval != null) {
         var rate = currentKeyframeInterval.getPlaybackRate();
-        timelapse.setPlaybackRate(rate, null, true);
+        timelapse.setPlaybackRate(rate, true, true);
 
         // When we set the current keyframe interval,
         // ask if we need to do an extra pausing at the beginning of playing the tour

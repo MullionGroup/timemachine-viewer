@@ -8,7 +8,7 @@ body, html {
 }
 
 .player {
-  border: 1px solid #656565;
+  border: 0px;
 }
 
 .ui-dialog {
@@ -51,6 +51,7 @@ body, html {
   height: auto;
   background: black;
   overflow: hidden;
+  touch-action: none;
 }
 
 .tiledContentHolder-touchFriendly {
@@ -81,7 +82,6 @@ body, html {
 }
 
 .customPlay-touchFriendly .ui-icon.ui-icon-custom-play {
-  background-image: url(../images/touch/play.png);
   margin-top: -14px;
   margin-left: -11px;
   width: 28px;
@@ -102,16 +102,6 @@ body, html {
   width: 38px;
   height: 38px;
   opacity: 0.7;
-}
-
-.customPlay-touchFriendly .ui-icon.ui-icon-custom-pause {
-  background-image: url(../images/touch/pause.png);
-  margin-top: -15px;
-  margin-left: -15px;
-  width: 30px;
-  height: 30px;
-  opacity: 0.55;
-  background-size: contain !important;
 }
 
 .ui-button.ui-state-hover .ui-icon.ui-icon-custom-pause {
@@ -164,7 +154,7 @@ body, html {
 
 .customButton {
   width: 60px;
-  height: 19px;
+  height: 30px;
   background: white !important;
   border: 1px solid #656565 !important;
   border-radius: 2px !important;
@@ -189,19 +179,48 @@ _:-moz-tree-row(hover), .customButton .ui-button-text {
 }
 
 .share {
-  position: absolute;
-  bottom: 20px;
-  right: 89px;
+  position: relative;
+  float: right;
+  right: 20px;
+  bottom: -20px;
+  margin-left: 10px;
+  background: white;
+  border: 1px solid #656565;
+  border-radius: 2px;
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  z-index: 30;
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  height: 30px;
+  width: 70px;
 }
 
 .share .ui-button-text {
   margin-left: -1px;
 }
 
+.share .ui-icon-custom-share-black {
+  background: url(../images/buttons/share-black.png);
+  width: 15px;
+  height: 15px;
+  opacity: 0.5;
+  background-size: contain;
+  -webkit-background-size: contain;
+  margin-left: -1px;
+  margin-top: -8px;
+}
+
+.share:hover .ui-icon-custom-share-black {
+  opacity: 0.8;
+}
+
 .tool {
-  position: absolute;
-  bottom: 20px;
-  right: 158px;
+  position: relative;
+  float: right;
+  bottom: -20px;
+  margin-left: -10px;
+  right: 20px;
 }
 
 .tool .ui-button-text {
@@ -209,11 +228,13 @@ _:-moz-tree-row(hover), .customButton .ui-button-text {
 }
 
 .helpPlayerLabel.ui-button {
-  position: absolute;
-  height: 17px;
-  bottom: 20px;
+  position: relative;
+  height: 28px;
   width: 58px;
+  float: right;
   right: 20px;
+  bottom: -20px;
+  margin-left: 10px;
   background: white;
   border: 1px solid #656565;
   border-radius: 2px !important;
@@ -229,13 +250,13 @@ _:-moz-tree-row(hover), .customButton .ui-button-text {
 }
 
 .helpPlayerLabel .ui-button-text {
-  margin-top: -1px;
-  margin-left: 3px;
+  margin-top: 4px;
+  margin-left: -2px;
 }
 
 /* FireFox specific CSS */
 _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
-  margin-top: -2px;
+  margin-top: 2px;
 }
 
 .instructions {
@@ -247,7 +268,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   right: 1px;
   width: auto;
   height: auto;
-  z-index: 999;
+  z-index: 9000;
   display: none;
 }
 
@@ -277,7 +298,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 .instructions span.zoomhelp {
   background-color: white;
   border: 1px solid #656565;
-  top: 85px;
+  top: 20px;
   left: 67px;
   overflow: visible;
   border-radius: 2px;
@@ -286,7 +307,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 .instructions span.zoomallhelp {
   background-color: white;
   border: 1px solid #656565;
-  top: 185px;
+  top: 118px;
   left: 67px;
   overflow: visible;
   border-radius: 2px;
@@ -350,12 +371,11 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   z-index: 10;
 }
 
-.playbackButton.ui-button {
-  display: block;
+.player:not(.materialUI):not(.mobileUI) .playbackButton.ui-button {
   position: absolute;
-  width: 50px;
-  height: 50px;
-  bottom: 17px;
+  width: 58px;
+  height: 58px;
+  bottom: 16px;
   left: 20px;
   background: white;
   border: 1px solid #656565;
@@ -363,6 +383,40 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
   z-index: 10;
   outline: none;
+}
+
+.playbackButton-touchFriendly.ui-button {
+  width: 68px;
+  height: 68px;
+  bottom: 23px;
+}
+
+.controls-touchFriendly .timelineSlider .ui-slider-handle {
+  height: 22px;
+  width: 15px;
+}
+
+.controls-touchFriendly .timelineSliderFiller {
+  left: 110px;
+  bottom: 51px;
+}
+
+.controls-touchFriendly .timelineSlider, .controls-touchFriendly .timelineSelector {
+  height: 14px;
+}
+
+.controls-touchFriendly .toggleSpeed.ui-button {
+  width: 55px;
+  height: 23px;
+  bottom: 18px;
+  left: 110px;
+  font-size: 9pt;
+}
+
+.captureTime-touchFriendly {
+  bottom: 17px;
+  font-size: 20px;
+  left: 185px;
 }
 
 .timelineSliderFiller {
@@ -380,8 +434,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.8);
-  position: absolute;
-  height: 7px;
+  height: 10px;
   width: inherit;
   position: relative;
   top: 0px;
@@ -394,7 +447,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 .timelineSlider .ui-slider-handle {
   width: 12px;
   margin-left: -5px !important;
-  height: 15px;
+  height: 18px;
   overflow: hidden;
   top: -5px;
   border-style: none;
@@ -464,8 +517,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.8);
-  position: absolute;
-  height: 7px;
+  height: 10px;
   width: inherit;
   position: relative;
   top: 0px;
@@ -544,6 +596,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 }
 
 .zoomSlider {
+  display: none;
   width: 4px;
   height: 70px;
   background: #ffffff;
@@ -554,6 +607,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 }
 
 .zoomSlider .ui-slider-handle {
+  display: none;
   width: 20px;
   height: 8px;
   overflow: hidden;
@@ -567,7 +621,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 }
 
 .pan {
-  display: block;
+  display: none;
   width: 50px;
   height: 50px;
   margin-bottom: 10px;
@@ -578,6 +632,7 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 }
 
 .pan .ui-button {
+  display: none;
   position: absolute;
   width: 20px;
   height: 20px;
@@ -589,30 +644,200 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 .sideToolBar {
   position: absolute;
   top: 20px;
-  left: 20px;
+  right: 20px;
   z-index: 15;
 }
 
-.zoom .ui-button {
-  display: block;
-  width: 20px;
-  height: 20px;
-  margin: 0 auto;
-  background: white;
-  border: 1px solid #656565;
-  border-radius: 2px !important;
-  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+.verticalWaypointDrawerContainer .sideToolBar {
+  right: 20px;
 }
 
-.zoom-touchFriendly .ui-button {
-  width: 50px;
-  height: 50px;
-  margin: 0px 0px 18px 0px;
-  border-radius: 35px !important;
+.pac-container {
+  z-index: 90002;
+  -webkit-appearance: none;
+  -webkit-box-shadow: 0px 3px 6px rgba(0,0,0,0.3);
+  box-shadow: 0px 3px 6px rgba(0,0,0,0.3);
+  border-top: 0px !important;
+}
+
+.pac-item {
+  height: 45px;
+}
+
+.pac-item span:last-child:not(.pac-matched) {
+  display: block;
+  margin-left: 22px;
+  margin-top: -12px;
+  font-size: 12px;
+}
+
+.pac-item, .pac-item-query {
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.searchBoxContainer {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 99;
+  height: 38px;
+  width: 38px;
+  display: none;
+}
+
+.player:not(.mobileUI) .searchBox {
+  z-index: 136;
+  width: 0px;
+  height: 38px;
+  padding: 0px;
+  box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
+  border-top-left-radius: 1px;
+  border-bottom-left-radius: 1px;
+  border-top-right-radius: 0px;
+  border-bottom-right-radius: 0px;
+  outline: none;
+  border: 1px solid #d3d3d3;
+  padding-left: 38px;
+  padding-right: 0px;
+  border-radius: 4px;
+}
+
+.searchBoxIcon:hover {
+  opacity: 0.9;
+}
+
+.searchBoxIcon {
+  background: url(../images/search-black.png) center center no-repeat;
+  background-size: contain;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  right: 6px;
+  top: 9px;
+  cursor: default;
+  opacity: 0.60;
+  cursor: pointer;
+}
+
+.searchBoxIcon:after {
+  content: '';
+  position: absolute;
+  top: -11px;
+  bottom: -7px;
+  left: -7px;
+  right: -11px;
+}
+
+.searchBoxClearIcon {
+  background: url(../images/close.png) center center no-repeat;
+  background-size: contain;
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  left: 240px;
+  top: 8px;
+  cursor: pointer;
+  opacity: 0.60;
+  display: none;
+}
+
+.searchBoxClearIcon:after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  bottom: -8px;
+  left: -10px;
+  right: -5px;
+}
+
+.searchBoxClearIcon:hover {
+  opacity: 0.9;
+}
+
+.search-button {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 4px;
+  position: absolute;
+  cursor: pointer;
+  top: 0px;
+  left: -40px;
+  -webkit-box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  outline: none;
+  border: 1px solid #d3d3d3;
+}
+
+.zoom .ui-button {
+  margin-top: 0px;
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: white;
+  -webkit-box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
+  outline: none;
+  position: relative;
+  border-radius: 0px;
+}
+
+.zoomin.ui-state-hover, .zoomout.ui-state-hover {
+  border: 1px solid #d3d3d3;
+}
+
+.zoomin {
+  border-top-right-radius: 4px !important;
+  border-top-left-radius: 4px !important;
+}
+
+.zoomin .ui-icon.ui-icon-plus, .zoomout .ui-button .ui-icon.ui-icon-custom-plus {
+  background: url(../images/plus.png);
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+  -webkit-background-size: contain;
+          background-size: contain;
+  margin-left: -8px;
+  margin-top: -8px;
+}
+
+.zoomout {
+  border-bottom-right-radius: 4px !important;
+  border-bottom-left-radius: 4px !important;
+}
+
+.zoomout .ui-icon.ui-icon-minus, .zoomout .ui-button .ui-icon.ui-icon-custom-minus {
+  background: url(../images/minus.png);
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+  -webkit-background-size: contain;
+          background-size: contain;
+  margin-left: -8px;
+  margin-top: -9px;
+}
+
+.zoomall.ui-button {
+  margin-top: 20px !important;
+}
+
+.zoomall .ui-icon {
+  background: url(../images/home.png);
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+  -webkit-background-size: contain;
+          background-size: contain;
 }
 
 .zoom .ui-icon {
   margin-top: -9px;
+}
+
+.sideToolBar .ui-button:hover > .ui-icon{
+  opacity: 1;
 }
 
 .controls {
@@ -623,10 +848,6 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   width: auto;
   height: 60px;
   overflow: visible;
-}
-
-.customDialog {
-  height: auto !important;
 }
 
 .customDialog a {
@@ -666,8 +887,9 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
 .customDialog .ui-spinner {
   overflow: visible;
   border-radius: 1px;
-  width: 205px;
+  width: 155px;
   height: 20px;
+  background: white !important;
 }
 
 .customDialog .ui-spinner-input {
@@ -679,14 +901,24 @@ _:-moz-tree-row(hover), .helpPlayerLabel .ui-button-text {
   font-size: 1em;
 }
 
+.customDialogButton.ui-state-disabled {
+  cursor: not-allowed !important;
+}
+
 .customDialog .customDialogButton.generate-thumbnail {
   width: 335px;
   height: 30px;
   margin-top: 5px;
 }
 
+.thumbnail-processing-time-warning-container {
+  display: none;
+  color: purple;
+}
+
 .customDialog .customDialogButton.generate-thumbnail .ui-button-text {
   margin-top: 2px;
+  font-size: 13px;
 }
 
 /* FireFox specific CSS */
@@ -705,12 +937,15 @@ _:-moz-tree-row(hover), .ui-spinner-input {
   }
 }
 
-.customDialog .reset-large, .customDialog .reset-small {
-  width: 74px;
+.customDialog .reset-custom, .customDialog .reset-viewport, .customDialog .playback-custom {
+  background: white !important;
+  width: 85px;
 }
 
-.customDialog .reset-medium {
-  width: 85px;
+.customDialog .reset-custom.selected, .customDialog .reset-viewport.selected, .customDialog .playback-custom.selected {
+  background: #e6e6e6 !important;
+  box-shadow: 0px 0px 2px 2px #ccc;
+  z-index: 100;
 }
 
 .customDialog .customSlider {
@@ -727,13 +962,22 @@ _:-moz-tree-row(hover), .ui-spinner-input {
   cursor: pointer;
 }
 
+.custom-thumbnail-playback-rate {
+  width: 40px !important;
+  position: absolute;
+}
+
+#thumbnail-fps-overlay {
+  width: 54px;
+}
+
 .customDialog .customSlider .ui-slider-handle:focus {
   outline: none;
 }
 
 .customDialog .customDialogButton {
-  margin-right: 5px;
   height: 20px;
+  min-width: 60px;
   border-radius: 1px;
   background-image: none;
 }
@@ -741,7 +985,15 @@ _:-moz-tree-row(hover), .ui-spinner-input {
 .customDialog .customDialogButton .ui-button-text {
   padding-left: 9px;
   padding-right: 9px;
-  margin-top: -3px;
+  margin-top: -4px;
+}
+
+.share-thumbnail-tool > .ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default {
+  border: 1px solid #a9a9a9;
+}
+
+.share-thumbnail.ui-accordion-content {
+  padding: 1em 1.6em !important;
 }
 
 /* FireFox specific CSS */
@@ -763,7 +1015,7 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   margin-left: 0px;
   margin-right: 4px;
   margin-bottom: 4px;
-  width: 280px;
+  width: 270px;
   height: 16px;
   resize: none;
 }
@@ -777,22 +1029,26 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   margin-left: 10px;
   margin-right: 10px;
   margin-bottom: 15px;
-  margin-top: 12px;
+  margin-top: 42px;
 }
 
 .customDialog .accordion .ui-accordion-header {
   border: 0px;
   border-radius: 2px;
   background-image: none;
+  font-size: 14px;
+  background: #dcdcdc;
 }
 
 .customDialog .accordion .ui-accordion-header-active {
   font-weight: bold;
+  background: #c2c2c2;
 }
 
 .customDialog .accordion .ui-accordion-content {
   border: 0px;
   border-radius: 2px;
+  overflow-x: hidden;
 }
 
 .customDialog .accordion .ui-state-active.ui-accordion-header:hover {
@@ -803,10 +1059,31 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   outline: none;
 }
 
+.customDialog .ui-dialog-title {
+  position: absolute;
+  top: 11px;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
 .customDialog .ui-dialog-titlebar-close {
   border: 0px;
   border-radius: 2px;
   background-image: none;
+  position: absolute;
+  right: 10px;
+  top: 17px;
+  width: 23px;
+  height: 23px;
+}
+
+.ui-button-icon-only .ui-icon {
+  margin-left: -9px;
+  margin-top: -8px;
 }
 
 .customDialog .ui-dialog-titlebar-close:focus {
@@ -823,12 +1100,12 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
 
 .spinnerOverlay {
   background-image: url(../images/loading.gif);
-  width: 32px;
-  height: 32px;
+  width: 64px;
+  height: 64px;
   top: 50%;
   left: 50%;
-  margin-left: -16px;
-  margin-top: -16px;
+  margin-left: -32px;
+  margin-top: -32px;
   position: absolute;
   display: none;
   z-index: 10;
@@ -838,18 +1115,28 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   width: 350px;
 }
 
+.share-thumbnail-tool td:first-child {
+  width: 130px;
+}
+
 .share-thumbnail-tool td {
   height: 25px;
   white-space: nowrap;
 }
 
 #browser_not_supported {
-  display: block;
-  height: 348px;
-  left: 34px;
-  position: fixed;
-  top: 100px;
-  width: 514px;
+  display: -webkit-flex;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
 }
 
 #html5_overridden_message {
@@ -863,13 +1150,12 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
 
 .warning, .error {
   border: 1px solid;
-  width: 400px;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: 50px;
   padding: 15px 10px 15px 60px;
   background-repeat: no-repeat;
   background-position: 10px center;
+  height: auto;
+  width: auto;
+  max-width: 514px;
 }
 
 .warning {
@@ -884,17 +1170,26 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   background-image: url('../images/error.png');
 }
 
-.ui-dialog-titlebar {
+.customDialog .ui-dialog-titlebar {
   background: #959595;
   border: 0;
   color: white;
+  height: 29px;
+  border-radius: 0px;
+  padding-left: 10px;
+  position: sticky;
+  width: auto;
+  top: 0px;
+  box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+  z-index: 9000;
+  margin-left: -1px;
 }
 
 .toggleSpeed.ui-button {
   position: absolute;
   width: 55px;
-  height: 19px;
-  bottom: 20px;
+  height: 23px;
+  bottom: 16px;
   left: 89px;
   background: white;
   border: 1px solid #656565;
@@ -1023,9 +1318,12 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   height: 100%;
   position: absolute;
   top: 0px;
-  display: inline-block;
-  /*pointer-events: auto;*/
+  display: block;
   z-index: 1;
+}
+
+.thumbnail-preview {
+  width: 335px;
 }
 
 .thumbnail-preview-copy-text-container {
@@ -1034,9 +1332,55 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   width: 350px;
 }
 
+.thumbnail-preview-link {
+  font-size: 14px;
+}
+
+.thumbnail-preview-error {
+  padding: 10px;
+  padding-top: 8px;
+  height: calc(100% - 20px);
+  background: white;
+}
+
 .thumbnail-preview-copy-text-button {
   margin-right: 0px;
   margin-bottom: 3px;
+  width: 112px;
+}
+
+.thumbnail-swap-selection-dimensions {
+  background: url(../images/swap.png) rgba(255, 255, 255, 0) center no-repeat;
+  background-position: center;
+  background-size: cover;
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+  position: absolute;
+  margin-left: 4px;
+  opacity: 0.60;
+  cursor: pointer;
+}
+
+.thumbnail-set-current-time {
+  background: url(../images/clock.png) rgba(255, 255, 255, 0) center no-repeat;
+  background-position: center;
+  background-size: cover;
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+  position: absolute;
+  margin-left: 46px;
+  opacity: 0.60;
+  cursor: pointer;
+}
+
+.thumbnail-swap-selection-dimensions:hover, .thumbnail-set-current-time:hover {
+  opacity: 0.8
+}
+
+.thumbnail-preview-copy-data-button, .thumbnail-preview-copy-download-button {
+  width: 100px;
 }
 
 .thumbnail-preview-copy-text {
@@ -1051,20 +1395,25 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
 .thumbnail-preview-container {
   position: relative;
   max-width: 335px;
-  max-height: 200px;
+  height: auto;
+  min-height: 200px;
   border: 1px solid #656565;
   overflow-x: hidden;
   overflow-y: hidden;
+  background: none;
+}
+
+.thumbnail-preview-container.loading {
   background: url('../images/loading.gif') #fff center no-repeat;
 }
 
 .thumbnail-preview-copy-text-button-tooltip {
-  z-index: 1100;
+  z-index: 100001;
   position: absolute;
   line-height: 18px;
-  background-color: #262626;
-  border: 1px solid #262626;
-  opacity: 0.7;
+  background-color: #3a3a3a;
+  border: 1px solid #3a3a3a;
+  opacity: 1;
   border-radius: 2px;
   overflow: visible;
   -moz-box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.3);
@@ -1096,11 +1445,22 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   color: white;
 }
 
-.embed-capture-time {
+.embed-capture-time, .smooth-playback, .force-aspect-ratio, .waypoint-only, .waypoint-index {
   margin-left: 0px;
   width: 15px;
   height: 15px;
   cursor: pointer;
+}
+
+.presentation-mode-share-input {
+  display: none;
+}
+
+input:disabled, .thumbnail-speed.ui-state-disabled, .thumbnail-playback-rate.ui-state-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.3 !important;
+  background: white !important;
+  border: 1px solid #9c9c9c !important;
 }
 
 .toolDialogContent {
@@ -1126,7 +1486,7 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
 .customCheckboxLabelBold {
   font-weight: bold;
   vertical-align: middle;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -1144,12 +1504,10 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   margin-right: -5px !important;
 }
 
-.thumbnail-type-video.selected {
+.thumbnail-type-video.selected, .thumbnail-type-image.selected {
   background: #e6e6e6 !important;
-}
-
-.thumbnail-type-image.selected {
-  background: #e6e6e6 !important;
+  box-shadow: 0px 0px 2px 2px #ccc;
+  z-index: 100;
 }
 
 .thumbnail-type-video.disabled {
@@ -1160,8 +1518,12 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   cursor: not-allowed !important;
 }
 
+.wrap-cell-contents {
+  white-space: normal !important;
+}
+
 .customDropdownButton {
-  width: 70px;
+  width: 76px;
   height: 20px;
   border-radius: 1px !important;
   z-index: 30;
@@ -1174,7 +1536,7 @@ _:-moz-tree-row(hover), .customDialog .customDialogButton .ui-button-text {
   text-align: left;
   padding-left: 9px;
   padding-right: 9px;
-  margin-top: -3px;
+  margin-top: -4px;
   margin-left: -2px;
 }
 
@@ -1189,9 +1551,13 @@ _:-moz-tree-row(hover), .customDropdownButton .ui-button-text {
 
 .customDropdownMenu {
   display: none;
-  width: 70px;
+  width: auto;
   position: absolute;
-  z-index: 115;
+  z-index: 100001;
+}
+
+input[type=number]{
+    width: 50px;
 }
 
 .customDropdownMenu .ui-menu-item {
@@ -1201,10 +1567,10 @@ _:-moz-tree-row(hover), .customDropdownButton .ui-button-text {
 .always-selectable {
   -webkit-user-select: auto;
   -khtml-user-select: auto;
-  -moz-user-select: element;
+  -moz-user-select: text;
   -ms-user-select: element;
   -o-user-select: auto;
-  user-select: element;
+  user-select: text;
 }
 
 input::-ms-clear {
@@ -1214,6 +1580,128 @@ input::-ms-clear {
 
 .shareView {
   display: none;
+  background: #f3f3f3;
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  height: 100%;
+  z-index: 100000;
+  overflow-y: auto;
+  width: 418px;
+  border-left: 1px solid black;
+}
+
+.shareViewModal {
+  display: none;
+}
+
+.shareView .ui-widget-content {
+  background: #f3f3f3;
+}
+
+.right-panel-active {
+  right: 418px !important;
+}
+
+.shareView.right-panel-active {
+  right: -418px !important;
+}
+
+#shareViewPanelTitle {
+  display: none;
+}
+
+.close-right-panel {
+  display: none;
+}
+
+.shareViewModal.ui-dialog-content {
+  overflow: hidden;
+  padding-bottom: 20px;
+}
+
+.shareViewModal .share-link-container, .shareViewModal .embed-link-container {
+  font-size: 13px;
+  border: 1px solid #f4f4f4;
+  background-color: #f4f4f4;
+  border-radius: 8px;
+  color: #1e88e5;
+  width: 255px !important;
+  padding: 8px;
+}
+
+.shareViewModal .shareurl, .shareViewModal .shareembed {
+  width: 230px !important;
+  height: 16px !important;
+  overflow: hidden;
+  margin: 0px !important;
+  word-break: break-all;
+}
+
+.shareViewModal .close-share {
+  background: url(../images/close.png) center center no-repeat;
+  background-size: 20px 20px;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  cursor: default;
+  opacity: 0.67;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  cursor: pointer;
+}
+
+.shareViewModal .close-share:hover {
+  opacity: 0.9;
+}
+
+.shareViewModal .close-share:after {
+  content:'';
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -12px;
+  right: -12px;
+}
+
+.shareViewModal .copy-text-button {
+  background: url(../images/copy.png) center center no-repeat;
+  background-size: 20px 20px;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  cursor: default;
+  opacity: 0.67;
+  position: absolute;
+  right: 22px;
+  margin-top: -18px;
+  cursor: pointer;
+}
+
+.shareViewModal .copy-text-button:hover {
+  opacity: 0.9;
+}
+
+.shareViewModal .copy-text-button:after {
+  content:'';
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -12px;
+  right: -12px;
+}
+
+.shareViewModal #share-link-container-main p.heading {
+  /* Should be GoogleSans-Regular */
+  font-family: 'Roboto-Regular';
+  font-size: 18px;
+}
+
+.shareViewModal #embed-link-container-main p.heading {
+  /* Should be GoogleSans-Regular */
+  font-family: 'Roboto-Regular';
+  font-size: 18px;
 }
 
 #vector-layers input, #vector-layers label {
@@ -1268,4 +1756,268 @@ input::-ms-clear {
   padding-right: 8px;
   border-radius: 2px;
   font-size: 11px;
+}
+
+.hidden {
+  display: none;
+}
+
+.shareView::-webkit-scrollbar {
+  -webkit-appearance: none;
+  background: transparent;
+  overflow: visible;
+  width: 14px;
+  z-index: -1 !important;
+}
+
+.shareView::-webkit-scrollbar:vertical {
+  border-width: 6px 4px;
+  min-height: 40px;
+  margin-top: 30px;
+}
+
+.shareView::-webkit-scrollbar-track-piece {
+  background-color: #f1f1f1;
+  margin-top: 30px;
+}
+
+.shareView::-webkit-scrollbar-corner {
+  background: transparent;
+  margin-top: 30px;
+}
+
+.shareView::-webkit-scrollbar-thumb {
+  background-color: #ADADAD;
+  -webkit-box-shadow: inset 1px 1px 0 rgba(0,0,0,0.10),inset 0 -1px 0 rgba(0,0,0,0.07);
+  margin-top: 30px;
+}
+
+.shareView::-webkit-scrollbar-thumb:hover {
+  background-color: #999;
+}
+
+.twitter-sharelink {
+  cursor: pointer;
+  background-image: url(../images/twitter.png);
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 72px;
+  height: 24px;
+  display: block;
+  float: left;
+  margin-top: 5px;
+  padding-bottom: 10px;
+}
+
+.fb-sharelink {
+  cursor: pointer;
+  background-image: url(../images/fb.png);
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 62px;
+  height: 24px;
+  display: block;
+  margin-left: 12px;
+  float: left;
+  margin-top: 5px;
+  padding-bottom: 10px;
+}
+
+.twitter-sharelink:hover, .fb-sharelink:hover {
+  opacity: 0.9;
+}
+
+.shareView.customDialog .ui-dialog-titlebar {
+  height: 49px;
+  box-shadow: none;
+  border-bottom: 1px solid black;
+  border-left: 1px solid black;
+}
+
+.shareView.customDialog .accordion {
+  margin: 20px;
+  height: auto;
+}
+
+.shareView.customDialog .ui-dialog-title {
+  top: 14px;
+  left: 22px;
+  font-size: 18px;
+}
+
+.shareView.customDialog .ui-dialog-titlebar-close {
+  right: 12px;
+  top: 14px !important;
+}
+
+.shareView.customDialog {
+  border-left: 1px solid black;
+}
+
+.waypointDrawerContainerMain {
+  display: none;
+}
+
+.waypointDrawerContainerHeader {
+  /* Should be GoogleSans-Medium */
+  font-family: 'Roboto-Medium';
+  font-size: 18px;
+  text-align: center;
+  padding-top: 18px;
+  height: 37px;
+  display: -webkit-flex;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  justify-content: center;
+  position: sticky;
+  position: -webkit-sticky;
+  z-index: 90;
+  top: 0;
+  background: white;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.player:not(.mobileUI) .waypointDrawerContainerHeader:not(.mobileUI) {
+  font-size: 20px;
+  height: 41px;
+}
+
+.waypointDrawerSideControlsContainer {
+  position: relative;
+  right: 0px;
+  top: 20px;
+  width: auto;
+  float: left;
+  height: 40px;
+  right: -416px;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: reverse;
+  -ms-flex-direction: row-reverse;
+  flex-direction: row-reverse;
+  display: -webkit-flex;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+      flex-wrap: wrap;
+}
+
+.waypointDrawerSideControlsContainer > div, .waypointDrawerSideControlsContainer > button {
+  margin-right: 10px;
+}
+
+.waypointDrawerContainer .waypointDrawerContainerHeader.scrolled {
+  -webkit-appearance: none;
+  -webkit-box-shadow: 0px 6px 6px -6px #bcbcbc;
+  box-shadow: 0px 6px 6px -6px #bcbcbc;
+  position: sticky;
+  position: -webkit-sticky;
+  z-index: 90;
+  top: 0;
+  background: white;
+}
+
+.etDrawerProductAboutHeading {
+  /* Should be GoogleSans-Medium */
+  font-family: 'Roboto-Medium';
+  font-size: 18px;
+  padding-bottom: 20px;
+}
+
+.etDrawerProductAboutHeading.maximized {
+  padding-left: 35px !important;
+}
+
+.etDrawerProductAboutDescription {
+  color: #424242;
+  font-family: 'Roboto-Regular';
+  font-size: 15px;
+  padding-bottom: 22px;
+  padding-right: 50px;
+}
+
+.etDrawerProductLearnMoreContent {
+  top: 120px;
+  background: white;
+  z-index: 10;
+  position: absolute;
+  width: calc(100% - 110px);
+  padding-left: 34px;
+  display: none;
+}
+
+.etDrawerLearnMoreExit {
+  background-image: url(../images/back-arrow.png);
+  background-size: 25px 25px;
+  position: absolute;
+  display: inline-block;
+  left: 20px;
+  width: 20px;
+  height: 20px;
+  top: 77px;
+  cursor: pointer;
+  opacity: 0.7;
+  display: none;
+}
+
+.etDrawerLearnMoreExit:hover {
+  opacity: 0.9
+}
+
+.etDrawerLearnMoreExit:after {
+  content:'';
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: -12px;
+  right: -12px;
+}
+
+.etDrawerLearnMoreExpand {
+  background-image: url(../images/forward-arrow.png);
+  background-size: 25px 25px;
+  position: absolute;
+  display: inline-block;
+  left: 172px;
+  width: 20px;
+  height: 20px;
+  top: 77px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.etDrawerLearnMoreExpand:hover {
+  opacity: 0.9
+}
+
+.etDrawerLearnMoreExpand:after {
+  content:'';
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  left: -10px;
+  right: -10px;
+}
+
+.etDrawerProductHighlightsHeading {
+  /* Should be GoogleSans-Medium */
+  font-family: 'Roboto-Medium';
+  font-size: 18px;
+  padding-bottom: 20px;
+}
+
+.etDrawerAbout, .etDrawerProductHighlights {
+  padding-left: 24px;
+  padding-top: 20px;
+}
+
+.etDrawerSectionSeparator {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+  width: 100%;
+}
+
+.ui-widget-overlay.ui-front {
+  z-index: 2000 !important;
 }

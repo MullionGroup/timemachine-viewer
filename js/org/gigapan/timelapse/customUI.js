@@ -1,41 +1,42 @@
-// @license
-// Redistribution and use in source and binary forms ...
-
-/*
- Class for managing custom UI
-
- Dependencies:
- * org.gigapan.timelapse.Timelapse
- * jQuery (http://jquery.com/)
-
- Copyright 2013 Carnegie Mellon University. All rights reserved.
-
- Redistribution and use in source and binary forms, with or without modification, are
- permitted provided that the following conditions are met:
-
- 1. Redistributions of source code must retain the above copyright notice, this list of
- conditions and the following disclaimer.
-
- 2. Redistributions in binary form must reproduce the above copyright notice, this list
- of conditions and the following disclaimer in the documentation and/or other materials
- provided with the distribution.
-
- THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
- WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
- FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
- CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- The views and conclusions contained in the software and documentation are those of the
- authors and should not be interpreted as representing official policies, either expressed
- or implied, of Carnegie Mellon University.
-
- Authors:
- Yen-Chia Hsu (legenddolphin@gmail.com)
+/**
+ * @license
+ * Redistribution and use in source and binary forms ...
+ *
+ * Class for managing custom UI
+ *
+ * Dependencies:
+ *  org.gigapan.timelapse.Timelapse
+ *  jQuery (http://jquery.com/)
+ *
+ * Copyright 2013 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ * of conditions and the following disclaimer in the documentation and/or other materials
+ * provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Carnegie Mellon University.
+ *
+ * Authors:
+ *  Yen-Chia Hsu (legenddolphin@gmail.com)
+ *
  */
 
 "use strict";
@@ -172,7 +173,6 @@ if (!org.gigapan.timelapse.Timelapse) {
     var timeTickGrow_width = 2;
     var timeTickGrow_height = currentTimeTick_height;
     var originalIsPaused;
-    var isSafari = org.gigapan.Util.isSafari();
     var timeTickSpan;
     var maxPlaybackRate = 1;
 
@@ -275,10 +275,6 @@ if (!org.gigapan.timelapse.Timelapse) {
       $customControl = $('<div class="customControl"></div>');
       // Append element
       $viewer.append($customControl);
-      // Create google logo
-      $customControl.append('<div class="googleLogo"></div>');
-      if (useTouchFriendlyUI)
-        $(".googleLogo").addClass("googleLogo-touchFriendly");
       // Create timeline toolbar
       createCustomButtons();
       // Create timeline slider
@@ -294,14 +290,7 @@ if (!org.gigapan.timelapse.Timelapse) {
               if (isPlaying) {
                 timelapse.seekToFrame(yearLockMinPlaybackFrame);
                 timelapse.play();
-                $customPlay.button({
-                  icons: {
-                    primary: "ui-icon-custom-pause"
-                  },
-                  text: false
-                }).attr({
-                  "title": "Pause"
-                });
+                setPlaybackButtonIcon("play");
                 return;
               }
             } else if (currentFrame >= yearLockMaxPlaybackFrame) {
@@ -501,9 +490,6 @@ if (!org.gigapan.timelapse.Timelapse) {
       }
 
       var speedOptions = [$slowSpeed, $fastSpeed, $mediumSpeed];
-      // Speeds < 0.5x in Safari, even if emulated, result in broken playback, so do not include the "slow" (0.25x) speed option
-      if (isSafari)
-        speedOptions.shift();
 
       $customControl.prepend(speedOptions);
 
@@ -527,20 +513,11 @@ if (!org.gigapan.timelapse.Timelapse) {
       $mediumSpeed.button({
         text: true
       }).click(function() {
-        // Due to playback issues, we are not allowing the "slow" option for Safari users
-        if (isSafari) {
-          var fastRate = getMaxPlaybackRate();
-          timelapse.setPlaybackRate(fastRate, null, true);
-          $customControl.prepend($fastSpeed);
-          $fastSpeed.stop(true, true).show();
-          UTIL.addGoogleAnalyticEvent('button', 'click', 'viewer-set-speed-to-fast');
-        } else {
-          var slowRate = getMaxPlaybackRate() / 4;
-          timelapse.setPlaybackRate(slowRate, null, true);
-          $customControl.prepend($slowSpeed);
-          $slowSpeed.stop(true, true).show();
-          UTIL.addGoogleAnalyticEvent('button', 'click', 'viewer-set-speed-to-slow');
-        }
+        var slowRate = getMaxPlaybackRate() / 4;
+        timelapse.setPlaybackRate(slowRate, null, true);
+        $customControl.prepend($slowSpeed);
+        $slowSpeed.stop(true, true).show();
+        UTIL.addGoogleAnalyticEvent('button', 'click', 'viewer-set-speed-to-slow');
         $mediumSpeed.slideUp(300);
         if (locker == "month" && isPlaying)
           playMonthLockFrames();
@@ -574,7 +551,7 @@ if (!org.gigapan.timelapse.Timelapse) {
             $fastSpeed.show();
             $mediumSpeed.hide();
             $slowSpeed.hide();
-          } else if ((rate < fastRate && rate >= mediumRate) || (isSafari && rate < mediumRate)) {
+          } else if (rate < fastRate && rate >= mediumRate) {
             $mediumSpeed.show();
             $fastSpeed.hide();
             $slowSpeed.hide();
@@ -711,12 +688,13 @@ if (!org.gigapan.timelapse.Timelapse) {
       // Play and stop button
       $customControl.append('<button class="customPlay" title="Play"></button>');
 
+      $customPlay = $("#" + timeMachineDivId + " .customPlay");
+
       if (useTouchFriendlyUI) {
-        $(".customPlay").addClass("customPlay-touchFriendly");
+        $customPlay.addClass("customPlay-touchFriendly");
         $(".customInstructions").addClass("customInstructions-touchFriendly");
       }
 
-      $customPlay = $("#" + viewerDivId + " .customPlay");
       $customPlay.button({
         icons: {
           primary: "ui-icon-custom-play"
@@ -901,18 +879,18 @@ if (!org.gigapan.timelapse.Timelapse) {
         $customTimeline.append($endTimeDotContainer);
       }
       var firstFrameForFirstYear = frameDictionary[0];
-      $timeTextLeft.text(firstFrameForFirstYear["year"]).css({
+      $timeTextLeft.html(firstFrameForFirstYear["year"]).css({
         "left": firstFrameForFirstYear["x"] + "%",
         "top": currentTimeTick_height + (useTouchFriendlyUI ? 8 : 5) + "px",
         "margin-left": ($timeTextLeft.width() / -2) + "px"
       });
       var firstFrameForEndYear = frameDictionary[yearDictionary[endYear]["previousStackEndIdx"] + 1];
-      $timeTextRight.text(firstFrameForEndYear["year"]).css({
+      $timeTextRight.html(firstFrameForEndYear["year"]).css({
         "left": firstFrameForEndYear["x"] + "%",
         "top": currentTimeTick_height + (useTouchFriendlyUI ? 8 : 5) + "px",
         "margin-left": ($timeTextRight.width() / -2) + "px"
       });
-      $timeTextHover.text(firstFrameForFirstYear["year"]).css({
+      $timeTextHover.html(firstFrameForFirstYear["year"]).css({
         "left": "50%",
         "top": currentTimeTick_height + (useTouchFriendlyUI ? 8 : 5) + "px",
         "margin-left": ($timeTextHover.width() / -2) + "px"
@@ -928,11 +906,34 @@ if (!org.gigapan.timelapse.Timelapse) {
     this.createCustomTimeline = createCustomTimeline;
 
     var resetCustomTimeline = function() {
-      $("#" + viewerDivId + " .customTimeline").remove();
-      $("#" + viewerDivId + " .timeText").remove();
+      $("#" + timeMachineDivId + " .customTimeline").remove();
+      $("#" + timeMachineDivId + " .timeText").remove();
       createCustomTimeline();
-      if (!timelapse.isPaused()) {
-        $("#" + viewerDivId + " .customPlay").button({
+      $customPlay = $("#" + timeMachineDivId + " .customPlay");
+      if (!timelapse.isPaused() && !timelapse.isDoingLoopingDwell()) {
+        setPlaybackButtonIcon("play");
+      }
+      timelapse.setPlaybackRate(timelapse.getPlaybackRate());
+      if (settings["showThumbnailTool"]) {
+        var defaultUI = timelapse.getDefaultUI();
+        defaultUI.resetcaptureTimeSpinnerRange();
+        defaultUI.resetShareThumbnailUI();
+      }
+    };
+    this.resetCustomTimeline = resetCustomTimeline;
+
+    var setPlaybackButtonIcon = function(type) {
+      if (type == "pause") {
+        $customPlay.button({
+          icons: {
+            primary: "ui-icon-custom-play"
+          },
+          text: false
+        }).attr({
+          "title": "Play"
+        });
+      } else if (type == "play") {
+        $customPlay.button({
           icons: {
             primary: "ui-icon-custom-pause"
           },
@@ -941,9 +942,8 @@ if (!org.gigapan.timelapse.Timelapse) {
           "title": "Pause"
         });
       }
-      timelapse.setPlaybackRate(timelapse.getPlaybackRate());
     };
-    this.resetCustomTimeline = resetCustomTimeline;
+    this.setPlaybackButtonIcon = setPlaybackButtonIcon;
 
     var handleEndTimeDotMousedown = function(event) {
       originalIsPaused = timelapse.isPaused();
@@ -1033,7 +1033,7 @@ if (!org.gigapan.timelapse.Timelapse) {
         var $timeTick = $timeTickContainer.children("#" + viewerDivId + " .timeTick");
         growTimeTick($timeTick);
         if (currentYearIdx != firstYear && currentYearIdx != endYear)
-          $timeTickContainer.append($timeTextHover.text(frameDictionary[currentFrameIdx]["year"]).stop(true, true).fadeIn(200));
+          $timeTickContainer.append($timeTextHover.html(frameDictionary[currentFrameIdx]["year"]).stop(true, true).fadeIn(200));
       } else
         $(event.target).addClass("closedHand");
     };
@@ -1243,11 +1243,7 @@ if (!org.gigapan.timelapse.Timelapse) {
 
     var playMonthLockFrames = function() {
       updateMonthLockPlaybackInterval();
-      $customPlay.button({
-        icons: {
-          primary: "ui-icon-custom-pause"
-        }
-      });
+      setPlaybackButtonIcon("play");
     };
 
     var setMonthLockPlaybackSpeed = function() {
@@ -1281,11 +1277,7 @@ if (!org.gigapan.timelapse.Timelapse) {
     var stopMonthLockFrames = function() {
       clearTimeout(monthLockPlaybackInterval);
       monthLockPlaybackInterval = null;
-      $customPlay.button({
-        icons: {
-          primary: "ui-icon-custom-play"
-        }
-      });
+      setPlaybackButtonIcon("pause");
     };
 
     var handleMonthLockFramesPlayPause = function() {
@@ -1296,7 +1288,7 @@ if (!org.gigapan.timelapse.Timelapse) {
     };
 
     var updateTimelineSlider = function(frameIdx) {
-      if (frameIdx < 0 || frameIdx > numFrames - 1)
+      if (frameIdx < 0 || frameIdx > numFrames - 1 || frameDictionary[frameIdx] == undefined)
         return;
       var currentYear = frameDictionary[frameIdx]["year"];
       if (datasetType == "modis" && $monthSpinnerTxt) {
@@ -1304,7 +1296,7 @@ if (!org.gigapan.timelapse.Timelapse) {
         $monthSpinner.val(frameDictionary[frameIdx]["monthFrameIdx"]).trigger('change');
       }
       $currentTimeTick.css("left", frameDictionary[frameIdx]["x"] + "%");
-      $timeText.text(currentYear);
+      $timeText.html(currentYear);
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1358,15 +1350,6 @@ if (!org.gigapan.timelapse.Timelapse) {
     //
 
     createCustomControl();
-
-    if (timelapse.getPlayOnLoad()) {
-      $customPlay.click();
-      $customPlay.button({
-        icons: {
-          primary: "ui-icon-custom-pause"
-        }
-      });
-    }
   };
   //end of org.gigapan.timelapse.CustomUI
 })();

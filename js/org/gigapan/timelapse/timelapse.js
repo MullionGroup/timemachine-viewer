@@ -1,57 +1,60 @@
-// @license
-// Redistribution and use in source and binary forms ...
-
-// Class for managing a timelapse.
-//
-// Dependencies:
-// * org.gigapan.Util
-// * org.gigapan.timelapse.Videoset
-// * org.gigapan.timelapse.VideosetStats
-// * jQuery (http://jquery.com/)
-//
-// Copyright 2011 Carnegie Mellon University. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without modification, are
-// permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this list of
-//    conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list
-//    of conditions and the following disclaimer in the documentation and/or other materials
-//    provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-// FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-// ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// The views and conclusions contained in the software and documentation are those of the
-// authors and should not be interpreted as representing official policies, either expressed
-// or implied, of Carnegie Mellon University.
-//
-// Authors:
-// Chris Bartley (bartley@cmu.edu)
-// Paul Dille (pdille@andrew.cmu.edu)
-// Yen-Chia Hsu (legenddolphin@gmail.com)
-// Randy Sargent (randy.sargent@cs.cmu.edu)
-//
-// VERIFY NAMESPACE
-//
-// Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
+/**
+ * @license
+ * Redistribution and use in source and binary forms ...
+ * Class for managing a timelapse.
+ *
+ * Dependencies:
+ *  org.gigapan.Util
+ *  org.gigapan.timelapse.Videoset
+ *  org.gigapan.timelapse.VideosetStats
+ *  jQuery (http://jquery.com/)
+ *
+ * Copyright 2011 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Carnegie Mellon University.
+ *
+ * Authors:
+ *  Chris Bartley (bartley@cmu.edu)
+ *  Paul Dille (pdille@andrew.cmu.edu)
+ *  Yen-Chia Hsu (legenddolphin@gmail.com)
+ *  Randy Sargent (randy.sargent@cs.cmu.edu)
+ *
+ */
 
 "use strict";
 
-var org;
 var availableTimelapses = [];
 var browserSupported;
 var timelapseMetadata;
 
+//
+// VERIFY NAMESPACE
+//
+
+// Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
+var org;
 if (!org) {
   org = {};
 } else {
@@ -114,7 +117,13 @@ if (!window['$']) {
 (function() {
   var UTIL = org.gigapan.Util;
   org.gigapan.timelapse.Timelapse = function(timeMachineDivId, settings) {
+    // TODO: revist in regards to name spacing, though legacy support still depends upon this global state
     availableTimelapses.push(this);
+    // TODO: revist in regards to name spacing, though legacy support still depends upon this global state
+    if (settings["enablePostMessageAPI"] && typeof(setupPostMessageHandlers) === "function") {
+      setupPostMessageHandlers();
+    }
+    var verticalCoverConstraint = null;
 
     // Settings
     var isHyperwall = settings["isHyperwall"] || false;
@@ -138,19 +147,32 @@ if (!window['$']) {
     var skippedFramesAtStart = ( typeof (settings["skippedFramesAtStart"]) == "undefined" || settings["skippedFramesAtStart"] < 0) ? 0 : settings["skippedFramesAtStart"];
     var enableMetadataCacheBreaker = settings["enableMetadataCacheBreaker"] || false;
     var enableContextMapOnDefaultUI = ( typeof (settings["enableContextMapOnDefaultUI"]) == "undefined") ? false : settings["enableContextMapOnDefaultUI"];
+    // TODO: Remove the need for this?
     var datasetType = settings["datasetType"];
-    var useCustomUI = ( typeof (settings["useCustomUI"]) == "undefined") ? (settings["datasetType"] == "landsat" || settings["datasetType"] == "modis") : settings["useCustomUI"];
+    // TODO: Remove the need for this?
+    var useCustomUI = settings["datasetType"] == "landsat" || settings["datasetType"] == "modis" || settings["uiType"] == "customUI";
+    var uiType = typeof(settings["uiType"]) == "undefined" ? (useCustomUI ? "customUI" : "defaultUI") : settings["uiType"];
+    // TODO: This is probably not working as intended or even fully necessary now
     var useTouchFriendlyUI = ( typeof (settings["useTouchFriendlyUI"]) == "undefined") ? false : settings["useTouchFriendlyUI"];
-    var thumbnailServerRootTileUrl = ( typeof (settings["thumbnailServerRootTileUrl"]) == "undefined") ? settings["url"] : settings["thumbnailServerRootTileUrl"];
     var useThumbnailServer = ( typeof (settings["useThumbnailServer"]) == "undefined") ? true : settings["useThumbnailServer"];
+    var thumbnailToolOptions = settings["thumbnailToolOptions"] || {};
+    // TODO: Legacy
+    thumbnailToolOptions.thumbnailServerHost = settings["thumbnailServerHost"];
+    thumbnailToolOptions.headlessClientHost = settings["headlessClientHost"];
+
     var showSizePicker = settings["showSizePicker"] || false;
     var visualizerGeometry = {
       width: 250,
       height: 142
     };
+    var waypointSliderOrientation = (settings["presentationSliderSettings"] && typeof(settings["presentationSliderSettings"]["orientation"]) != "undefined") ? settings["presentationSliderSettings"]["orientation"] : "horizontal";
+    // Only relevant for vertical orientation
+    var openWaypointSliderOnFirstLoad =  ( settings["presentationSliderSettings"] && typeof (settings["presentationSliderSettings"]["openDrawerOnLoad"]) != "undefined") ? settings["presentationSliderSettings"]["openDrawerOnLoad"] : false;
+    var browserNotSupportedTemplateName = ( typeof (settings["browserNotSupportedTemplateName"]) == "undefined") ? "browser_not_supported_template.html" : settings["browserNotSupportedTemplateName"];
+
     var minViewportHeight = 370;
     var minViewportWidth = 540;
-    var defaultLoopDwellTime = 0.5;
+    var defaultLoopDwellTime = 1.0;
     var pixelRatio = window.devicePixelRatio || 1;
 
     // If the user requested a tour editor AND has a div in the DOM for the editor,
@@ -174,6 +196,9 @@ if (!window['$']) {
     var annotator;
     var customUI;
     var defaultUI;
+    var mobileUI;
+    var materialUI;
+    var customLayers;
     var visualizer;
     var thumbnailTool;
     var changeDetectionTool;
@@ -181,11 +206,17 @@ if (!window['$']) {
 
     // DOM elements
     var dataPanesId;
-    var $previousCustomUIElements;
+    var $shareViewWaypointIndexCheckbox;
+    var $shareViewWaypointOnlyCheckbox;
 
     // Canvas version
     var canvas;
     var blackFrameDetectionCanvas;
+
+    // WebGL version
+    var gl;
+    var glb;
+    var webglTimeMachineLayer;
 
     // Full screen variables
     var fullScreen = false;
@@ -203,12 +234,17 @@ if (!window['$']) {
     var isIE = UTIL.isIE();
     var isIE9 = UTIL.isIE9();
     var doingLoopingDwell = false;
+    var whichDwell;
     var isFirefox = UTIL.isFirefox();
     var enableContextMap = true;
     var enablePanoVideo = true;
     var isChrome = UTIL.isChrome();
     var didFirstTimeOnLoad = false;
     var isMovingToWaypoint = false;
+    var isSpinnerShowing = false;
+    var isMobileDevice = UTIL.isMobileDevice();
+    var isEarthTime = UTIL.isEarthTime();
+    var isEarthTimeMinimal = UTIL.isEarthTimeMinimal();
 
     // Viewer
     var viewerDivId = timeMachineDivId + " .player";
@@ -235,16 +271,18 @@ if (!window['$']) {
     var currentVideo = null;
     var animateInterval = null;
     var lastAnimationTime;
-    var keyIntervals = [];
+    var keyIntervals = {};
     var targetViewChangeListeners = [];
     var viewChangeListeners = [];
     var resizeListeners = [];
     var viewEndChangeListeners = [];
     var playbackRateChangeListeners = [];
+    var masterPlaybackRateChangeListeners = [];
     var zoomChangeListeners = [];
     var fullScreenChangeListeners = [];
     var datasetLoadedListeners = [];
     var timelineUIChangeListeners = [];
+    var parabolicMotionStoppedListeners = [];
     var thisObj = this;
     var tmJSON;
     var datasetJSON = null;
@@ -273,21 +311,18 @@ if (!window['$']) {
     var onNewTimelapseLoadCompleteCallBack;
     var currentTimelineStyle;
     var customMaxScale;
+    var gmapsMaxLevelOverride = null;
     var keysDown = [];
-
-    var timePadding = isIE ? 0.3 : 0.0;
+    var shareViewLoopInterval;
+    var timePadding = isIE || isChrome ? 0.3 : 0.0;
     // animateRate in milliseconds, 40 means 25 FPS
     var animateRate = 40;
-    if (isHyperwall)
-      animateRate = 10;
-    else if (viewerType == "webgl")
-      animateRate = 10;
-    // animationFractionPerSecond, 5 means goes 500% toward goal in 1 sec
-    var animationFractionPerSecond = 5;
     if (isHyperwall)
       animateRate = 3;
     else if (viewerType == "webgl")
       animateRate = 12;
+    // animationFractionPerSecond, 5 means goes 500% toward goal in 1 sec
+    var animationFractionPerSecond = 5;
     // minTranslateSpeedPixelsPerSecond in pixels
     var minTranslateSpeedPixelsPerSecond = isHyperwall ? 25 : 25;
     // minZoomSpeedPerSecond in log2 scale
@@ -328,20 +363,28 @@ if (!window['$']) {
     this.CONSTANTS = CONSTANTS;
 
     var rootAppURL = org.gigapan.Util.getRootAppURL();
+    var currentLoopingParams = {};
+
 
     // Touch support
     var hasTouchSupport = UTIL.isTouchDevice();
+    var hasPointerSupport = UTIL.isPointerDevice();
     var tappedTimer = null;
     var lastDist = null;
     var lastLocation;
     var thisLocation;
     var isTouchMoving = false;
     var touchStartTargetElement;
+    var currentTouchCount = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // Public methods
     //
+    this.getUtil = function () {
+      return UTIL;
+    };
+
     this.showThumbnailToolWindow = function() {
       if (defaultUI && settings["showThumbnailTool"])
         defaultUI.showThumbnailToolWindow();
@@ -349,7 +392,12 @@ if (!window['$']) {
 
     this.setMaxScale = function(newMaxScale) {
       customMaxScale = newMaxScale;
-    }
+    };
+
+    // set to null to disable this override
+    this.setGmapsMaxLevel = function(maxLevel) {
+      gmapsMaxLevelOverride = maxLevel;
+    };
 
     this.setDoDwell = function(state) {
       loopDwell = state;
@@ -383,6 +431,10 @@ if (!window['$']) {
       return useCustomUI;
     };
 
+    this.getUIType = function() {
+      return uiType;
+    };
+
     this.getStartDwell = function() {
       return startDwell;
     };
@@ -401,7 +453,9 @@ if (!window['$']) {
     };
 
     this.updateShareViewTextbox = function() {
-      defaultUI.updateShareViewTextbox();
+      if (defaultUI) {
+        defaultUI.updateShareViewTextbox();
+      }
     };
 
     this.setMinZoomSpeedPerSecond = function(value) {
@@ -428,6 +482,14 @@ if (!window['$']) {
       return doingLoopingDwell;
     };
 
+    this.isDuringStartDwell = function() {
+      return doingLoopingDwell && whichDwell == 'start';
+    };
+
+    this.isDuringEndDwell = function() {
+      return doingLoopingDwell && whichDwell == 'end';
+    };
+
     this.isEditorEnabled = function() {
       return editorEnabled;
     };
@@ -452,6 +514,18 @@ if (!window['$']) {
       return customUI;
     };
 
+    this.getMobileUI = function() {
+      return mobileUI;
+    };
+
+    this.getMaterialUI = function() {
+      return materialUI;
+    };
+
+    this.getCustomLayers = function() {
+      return customLayers;
+    };
+
     this.getTimelineMetadataVisualizer = function() {
       return timelineMetadataVisualizer;
     };
@@ -468,6 +542,10 @@ if (!window['$']) {
     // TODO: Rename?
     this.getMode = function() {
       return defaultUI.getMode();
+    };
+
+    this.setMode = function(newMode) {
+      defaultUI.setMode(newMode);
     };
 
     this.getTimelapseCurrentCaptureTimeIndex = function() {
@@ -496,6 +574,10 @@ if (!window['$']) {
 
     this.getContextMap = function() {
       return contextMap;
+    };
+
+    this.getScale = function() {
+      return view.scale;
     };
 
     this.getScaleBar = function() {
@@ -609,19 +691,12 @@ if (!window['$']) {
         doingLoopingDwell = false;
         _pause();
         // Need to manually do this because of the looping dwell code
-        var playPauseBtn;
-        if (customUI)
-          playPauseBtn = " .customPlay";
-        else
-          playPauseBtn = " .playbackButton";
-        $("#" + timeMachineDivId + playPauseBtn).button({
-          icons: {
-            primary: "ui-icon-custom-play"
-          },
-          text: false
-        }).attr({
-          "title": "Play"
-        });
+        if (customUI) {
+          customUI.setPlaybackButtonIcon("pause");
+        }
+        if (defaultUI) {
+          defaultUI.setPlaybackButtonIcon("pause");
+        }
         return;
       }
       if (_isPaused()) {
@@ -636,10 +711,88 @@ if (!window['$']) {
       }
     };
 
-    var stopParabolicMotion = function() {
+    var clearDefaultTimeLoop = function() {
+      window.clearTimeout(customPlaybackTimeout);
+      window.clearTimeout(loopStartTimeoutId);
+      window.clearTimeout(loopEndTimeoutId);
+    };
+    this.clearDefaultTimeLoop = clearDefaultTimeLoop;
+
+    var clearShareViewTimeLoop = function() {
+      clearInterval(shareViewLoopInterval);
+      shareViewLoopInterval = null;
+      currentLoopingParams = {};
+    };
+    this.clearShareViewTimeLoop = clearShareViewTimeLoop;
+
+    var clearAllTimeLoops = function() {
+      clearDefaultTimeLoop();
+      clearShareViewTimeLoop();
+    };
+    this.clearAllTimeLoops = clearAllTimeLoops;
+
+    var handleShareViewTimeLoop = function(loopBeginTime, loopEndTime, loopStartDwell, loopEndDwell) {
+      clearAllTimeLoops();
+
+      currentLoopingParams.beginTime = loopBeginTime;
+      currentLoopingParams.endTime = loopEndTime;
+      currentLoopingParams.startDwell = loopStartDwell;
+      currentLoopingParams.endDwell = loopEndDwell;
+
+      if (thisObj.isLoading()) {
+        setTimeout(function() {
+          handleShareViewTimeLoop(loopBeginTime, loopEndTime, loopStartDwell, loopEndDwell);
+        }, 100);
+        return;
+      }
+      var maxDuration = thisObj.getDuration();
+      var waypointStartTime = thisObj.playbackTimeFromShareDate(String(loopBeginTime));
+      if (typeof(waypointStartTime) === "undefined") {
+        waypointStartTime = 0;
+      }
+      var waypointEndTime = thisObj.playbackTimeFromShareDate(String(loopEndTime));
+      if (typeof(waypointEndTime) === "undefined" || waypointEndTime == ((thisObj.getNumFrames() - 1) / _getFps().toFixed(1))) {
+        waypointEndTime = maxDuration;
+      }
+
+      if ((waypointStartTime == 0 && waypointEndTime.toFixed(2) == maxDuration.toFixed(2)) || loopBeginTime == loopEndTime) {
+        return;
+      }
+      loopStartDwell = parseFloat(loopStartDwell) || 0;
+      loopEndDwell = parseFloat(loopEndDwell) || 0;
+      shareViewLoopInterval = setInterval(function() {
+        if (thisObj.isPaused()) return;
+        var t = thisObj.getCurrentTime();
+        if (t >= waypointEndTime) {
+          doingLoopingDwell = true;
+          whichDwell = 'end';
+          thisObj.pause();
+          setTimeout(function() {
+            if (!doingLoopingDwell) return;
+            // Seek back to the desired 'begin time'
+            thisObj.seek(waypointStartTime);
+            whichDwell = 'start';
+            setTimeout(function() {
+              if (!doingLoopingDwell) return;
+              thisObj.play();
+              doingLoopingDwell = false;
+            }, loopStartDwell * 1000);
+          }, loopEndDwell * 1000);
+        }
+      }, 0);
+    };
+    this.handleShareViewTimeLoop = handleShareViewTimeLoop;
+
+    var stopParabolicMotion = function(opts) {
       if (parabolicMotionController) {
         isMovingToWaypoint = false;
         parabolicMotionController._disableAnimation();
+        parabolicMotionController = null;
+        if (!opts || opts && opts.doCallback) {
+          for (var i = parabolicMotionStoppedListeners.length - 1; i >= 0; i--) {
+            parabolicMotionStoppedListeners[i]();
+          }
+        }
       }
     };
     this.stopParabolicMotion = stopParabolicMotion;
@@ -685,13 +838,24 @@ if (!window['$']) {
     };
     this.zoomToScale = zoomToScale;
 
+    var getCaptureTimeByTime = function(time) {
+      return captureTimes[timeToFrameNumber(time)];
+    };
+    this.getCaptureTimeByTime = getCaptureTimeByTime;
+
+    var getCaptureTimeByFrameNumber = function(idx) {
+      return captureTimes[idx];
+    };
+    this.getCaptureTimeByFrameNumber = getCaptureTimeByFrameNumber;
+
     var getZoomFromBoundingBoxView = function(bboxView) {
       var newView;
       if (!bboxView || !bboxView['bbox'])
         return;
-      var bboxViewNE = bboxView.bbox.ne;
-      var bboxViewSW = bboxView.bbox.sw;
-      if (( typeof (tmJSON['projection-bounds']) !== 'undefined') && bboxViewNE && bboxViewSW && UTIL.isNumber(bboxViewNE.lat) && UTIL.isNumber(bboxViewNE.lng) && UTIL.isNumber(bboxViewSW.lat) && UTIL.isNumber(bboxViewSW.lng)) {
+      // For many years ne/sw was incorrectly used as the labels for nw/se. It has been corrected, but for current legacy reasons we assumed ne/sw actually refers to nw/se.
+      var bboxViewNW = bboxView.bbox.nw || bboxView.bbox.ne;
+      var bboxViewSE = bboxView.bbox.se || bboxView.bbox.sw;
+      if (( typeof (tmJSON['projection-bounds']) !== 'undefined') && bboxViewNW && bboxViewSE && UTIL.isNumber(bboxViewNW.lat) && UTIL.isNumber(bboxViewNW.lng) && UTIL.isNumber(bboxViewSE.lat) && UTIL.isNumber(bboxViewSE.lng)) {
         newView = latLngBoundingBoxToPixelCenter(bboxView);
       } else if (UTIL.isNumber(bboxView.bbox.xmin) && UTIL.isNumber(bboxView.bbox.xmax) && UTIL.isNumber(bboxView.bbox.ymin) && UTIL.isNumber(bboxView.bbox.ymax)) {
         newView = pixelBoundingBoxToPixelCenter(bboxView);
@@ -706,11 +870,19 @@ if (!window['$']) {
       var activeElement = document.activeElement;
       var sliderActive = $("#" + timeMachineDivId + " .timelineSlider .ui-slider-handle:focus").length || $("#" + timeMachineDivId + " .zoomSlider .ui-slider-handle:focus").length;
       // If we are focused on a text field or the slider handlers, do not run any player specific controls.
-      if (activeElement == "[object HTMLInputElement]" || activeElement == "[object HTMLTextAreaElement]")
+      if (activeElement == "[object HTMLInputElement]" || activeElement == "[object HTMLTextAreaElement]" || event.metaKey)
         return;
       var moveFn;
       keysDown.push(event.which);
       switch (event.which) {
+        // A key
+        case 65:
+          thisObj.seekToFrame(0);
+          break;
+        // S key
+        case 83:
+          thisObj.seekToFrame(thisObj.getNumFrames() - 1);
+          break
         // Escape key
         case 27:
           if (fullScreen && !browserSupportsFullScreen) {
@@ -730,9 +902,14 @@ if (!window['$']) {
             if (!thisObj.isPaused())
               thisObj.handlePlayPause();
             $(activeElement).removeClass("openHand closedHand");
-            seekToFrame(getCurrentFrameNumber() - 1);
-            if (customUI) {
-              customUI.focusTimeTick(getCurrentFrameNumber() - 1);
+            if (uiType == "materialUI") {
+              materialUI.seekControlAction("left");
+            } else {
+              var previousFrame = getCurrentFrameNumber() - 1;
+              seekToFrame(previousFrame);
+              if (customUI) {
+                customUI.focusTimeTick(previousFrame);
+              }
             }
           }
           event.preventDefault();
@@ -750,9 +927,14 @@ if (!window['$']) {
             if (!thisObj.isPaused())
               thisObj.handlePlayPause();
             $(activeElement).removeClass("openHand closedHand");
-            seekToFrame(getCurrentFrameNumber() + 1);
-            if (customUI) {
-              customUI.focusTimeTick(getCurrentFrameNumber() + 1);
+            if (uiType == "materialUI") {
+              materialUI.seekControlAction("right");
+            } else {
+              var nextFrame = getCurrentFrameNumber() + 1;
+              seekToFrame(nextFrame);
+              if (customUI) {
+                customUI.focusTimeTick(nextFrame);
+              }
             }
           }
           event.preventDefault();
@@ -763,11 +945,7 @@ if (!window['$']) {
             return;
           if (event.shiftKey) {
             moveFn = function() {
-              if (event.shiftKey) {
-                targetView.y -= (translationSpeedConstant * 0.4) / view.scale;
-              } else {
-                targetView.y -= (translationSpeedConstant * 0.8) / view.scale;
-              }
+              targetView.y -= (translationSpeedConstant * 0.4) / view.scale;
               setTargetView(targetView);
             };
           }
@@ -778,11 +956,7 @@ if (!window['$']) {
             return;
           if (event.shiftKey) {
             moveFn = function() {
-              if (event.shiftKey) {
-                targetView.y += (translationSpeedConstant * 0.4) / view.scale;
-              } else {
-                targetView.y += (translationSpeedConstant * 0.8) / view.scale;
-              }
+              targetView.y += (translationSpeedConstant * 0.4) / view.scale;
               setTargetView(targetView);
             };
           }
@@ -792,12 +966,7 @@ if (!window['$']) {
         case 109:
         case 189:
           moveFn = function() {
-            if (event.shiftKey) {
-              targetView.scale *= 0.999;
-            } else {
-              targetView.scale *= 0.94;
-            }
-            setTargetView(targetView);
+            defaultUI.zoomOut(event.shiftKey);
           };
           break;
         // Plus
@@ -805,12 +974,7 @@ if (!window['$']) {
         case 107:
         case 187:
           moveFn = function() {
-            if (event.shiftKey) {
-              targetView.scale /= 0.999;
-            } else {
-              targetView.scale /= 0.94;
-            }
-            setTargetView(targetView);
+            defaultUI.zoomIn(event.shiftKey);
           };
           break;
         // P or Spacebar
@@ -830,22 +994,10 @@ if (!window['$']) {
     };
 
     var handleKeyupEvent = function(event) {
-      var numKeysdown = 1;
-      // This addresses the issue where holding down the command key on a Mac, pressing another key
-      // and then releasing that key won't actually trigger a keyup event. Only when the command
-      // key is finally released is this event triggered. At that point, we need to manually remove
-      // all other keys that may have been pressed during that time or we'll be stuck with their
-      // timers still going. Ugh.
-      // Possible Mac 'command' key values depending upon browser and location on keyboard:
-      if (event.which == 224 || event.which == 17 || event.which == 91 || event.which == 92) {
-        numKeysdown = keysDown.length;
-      }
-      for (var i = 0; i < numKeysdown; i++) {
-        var keyUp = keysDown.pop();
-        if (keyIntervals[keyUp] != undefined) {
-          clearInterval(keyIntervals[keyUp]);
-          keyIntervals[keyUp] = undefined;
-        }
+      var keyUp = event.which;
+      if (keyIntervals[keyUp] != undefined) {
+        clearInterval(keyIntervals[keyUp]);
+        keyIntervals[keyUp] = undefined;
       }
     };
 
@@ -861,6 +1013,11 @@ if (!window['$']) {
         } else if (delta < 0) {
           magnitude = (event.shiftKey) ? -0.01 : -0.1;
         }
+        // Macs are very sensitive
+        // TODO: This is only relevant to touchpad and magic mouse (i.e. no mechanical scroll wheel)
+        if (UTIL.isMac()) {
+          magnitude /= 5;
+        }
         event.preventDefault();
       }
       zoomAbout(1 + magnitude, event.pageX, event.pageY);
@@ -873,11 +1030,19 @@ if (!window['$']) {
 
       var theTouch = e.changedTouches[0];
       var thisTouchCount = e.touches.length;
+      if (thisTouchCount) {
+        currentTouchCount = thisTouchCount;
+      } else {
+        currentTouchCount = 0;
+      }
       var mouseEvent;
       var theMouse;
 
       switch (e.type) {
         case "touchstart":
+          // TODO
+          if ($(e.target).parents("#static_map_base_layer").length) return;
+
           mouseEvent = "mousedown";
           touchStartTargetElement = theTouch;
 
@@ -908,12 +1073,13 @@ if (!window['$']) {
           mouseEvent = "mouseup";
           lastDist = null;
           // Take into account a slight epsilon due to a finger potentially moving just a few pixels when touching the screen
-          var notRealTouchMove = isTouchMoving && touchStartTargetElement && Math.abs(touchStartTargetElement.clientX - theTouch.clientX) < 5 && Math.abs(touchStartTargetElement.clientY - theTouch.clientY) < 5;
-
-          if ((!isTouchMoving || notRealTouchMove) && touchStartTargetElement && touchStartTargetElement.target == document.elementFromPoint(theTouch.clientX, theTouch.clientY)) {
-              theMouse = document.createEvent("MouseEvent");
-              theMouse.initMouseEvent('click', true, true, window, 1, theTouch.screenX, theTouch.screenY, theTouch.clientX, theTouch.clientY, false, false, false, false, 0, null);
-              theTouch.target.dispatchEvent(theMouse);
+          var notRealTouchMove = isTouchMoving && touchStartTargetElement && Math.abs(touchStartTargetElement.clientX - theTouch.clientX) < 10 && Math.abs(touchStartTargetElement.clientY - theTouch.clientY) < 10;
+          if (hasTouchSupport && (!isTouchMoving || notRealTouchMove) && touchStartTargetElement && touchStartTargetElement.target == document.elementFromPoint(theTouch.clientX, theTouch.clientY)) {
+            theMouse = document.createEvent("MouseEvent");
+            theMouse.initMouseEvent('click', true, true, window, 1, theTouch.screenX, theTouch.screenY, theTouch.clientX, theTouch.clientY, false, false, false, false, 0, null);
+            theTouch.target.dispatchEvent(theMouse);
+            // Dispatching a mouse click event does not give focus to some elements, such as input fields. Trigger focus ourselves.
+            $(theTouch.target).focus();
           }
 
           isTouchMoving = false;
@@ -940,6 +1106,8 @@ if (!window['$']) {
           if (thisTouchCount == 1) {
             // Translate
           } else if (thisTouchCount == 2) {
+            if (!$(e.target).hasClass("dataPanesContainer")) return;
+
             var dist = Math.abs(Math.sqrt((e.touches[0].pageX - e.touches[1].pageX) * (e.touches[0].pageX - e.touches[1].pageX) + (e.touches[0].pageY - e.touches[1].pageY) * (e.touches[0].pageY - e.touches[1].pageY)));
             thisLocation = {
               pageX: (e.touches[0].pageX + e.touches[1].pageX) / 2,
@@ -974,6 +1142,10 @@ if (!window['$']) {
       theMouse = document.createEvent("MouseEvent");
       theMouse.initMouseEvent(mouseEvent, true, true, window, 1, theTouch.screenX, theTouch.screenY, theTouch.clientX, theTouch.clientY, false, false, false, false, 0, null);
       theTouch.target.dispatchEvent(theMouse);
+    };
+
+    this.getCurrentTouchCount = function() {
+      return currentTouchCount;
     };
 
     var _warpTo = function(newView) {
@@ -1159,6 +1331,31 @@ if (!window['$']) {
     };
     this.addPlaybackRateChangeListener = _addPlaybackRateChangeListener;
 
+    var _removePlaybackRateChangeListener = function(listener) {
+      for (var i = 0; i < playbackRateChangeListeners.length; i++) {
+        if (playbackRateChangeListeners[i] == listener) {
+          playbackRateChangeListeners.splice(i, 1);
+          break;
+        }
+      }
+    };
+    this.removePlaybackRateChangeListener = _removePlaybackRateChangeListener;
+
+    var _addMasterPlaybackRateChangeListener = function(listener) {
+      masterPlaybackRateChangeListeners.push(listener);
+    };
+    this.addMasterPlaybackRateChangeListener = _addMasterPlaybackRateChangeListener;
+
+    var _removeMasterPlaybackRateChangeListener = function(listener) {
+      for (var i = 0; i < masterPlaybackRateChangeListeners.length; i++) {
+        if (masterPlaybackRateChangeListeners[i] == listener) {
+          masterPlaybackRateChangeListeners.splice(i, 1);
+          break;
+        }
+      }
+    };
+    this.removeMasterPlaybackRateChangeListener = _removeMasterPlaybackRateChangeListener;
+
     var _addVideoDrawListener = function(listener) {
       videoset.addEventListener('videoset-draw', listener);
     };
@@ -1199,6 +1396,21 @@ if (!window['$']) {
     };
     this.removeTimelineUIChangeListener = _removeTimelineUIChangeListener;
 
+    var _addParabolicMotionStoppedListener = function(listener) {
+      parabolicMotionStoppedListeners.push(listener);
+    };
+    this.addParabolicMotionStoppedListener = _addParabolicMotionStoppedListener;
+
+    var _removeParabolicMotionStoppedListener = function(listener) {
+      for (var i = 0; i < parabolicMotionStoppedListeners.length; i++) {
+        if (parabolicMotionStoppedListeners[i] == listener) {
+          parabolicMotionStoppedListeners.splice(i, 1);
+          break;
+        }
+      }
+    };
+    this.removeParabolicMotionStoppedListener = _removeParabolicMotionStoppedListener;
+
     var _getProjection = function(desiredProjectionType) {
       projectionType = typeof (desiredProjectionType) != 'undefined' ? desiredProjectionType : "mercator";
       if (projectionType == "mercator") {
@@ -1213,25 +1425,34 @@ if (!window['$']) {
     };
     this.getProjectionType = getProjectionType;
 
-    var getViewStrAsProjection = function() {
+    var getViewStrAsProjection = function(desiredView) {
+      desiredView = (typeof(desiredView) == "undefined") ? view : desiredView;
       var latlng = _getProjection().pointToLatlng(view);
-      return Math.round(1e5 * latlng.lat) / 1e5 + "," + Math.round(1e5 * latlng.lng) / 1e5 + "," + Math.round(1e3 * Math.log(view.scale / panoView.scale) / Math.log(2)) / 1e3 + "," + "latLng";
+      return UTIL.truncate(latlng.lat, 5) + "," + UTIL.truncate(latlng.lng, 5) + "," + UTIL.truncate(Math.log(desiredView.scale / panoView.scale) / Math.log(2), 3) + "," + "latLng";
     };
 
     var getViewStrAsPoints = function(desiredView) {
-      desiredView = ( typeof (desiredView) == "undefined") ? view : desiredView;
-      return Math.round(1e5 * desiredView.x) / 1e5 + "," + Math.round(1e5 * desiredView.y) / 1e5 + "," + Math.round(1e3 * Math.log(desiredView.scale / panoView.scale) / Math.log(2)) / 1e3 + "," + "pts";
+      desiredView = (typeof(desiredView) == "undefined") ? view : desiredView;
+      return UTIL.truncate(desiredView.x, 5) + "," + UTIL.truncate(desiredView.y, 5) + "," + UTIL.truncate(Math.log(desiredView.scale / panoView.scale) / Math.log(2), 3) + "," + "pts";
     };
 
     var _getViewStr = function(desiredView) {
       // TODO: let the user choose lat/lng or points for a dataset with projection info
       if (typeof (tmJSON['projection-bounds']) != 'undefined') {
-        return getViewStrAsProjection();
+        return getViewStrAsProjection(desiredView);
       } else {
         return getViewStrAsPoints(desiredView);
       }
     };
     this.getViewStr = _getViewStr;
+
+
+    var _debugLogMessages = [];
+    var _debugLog = function(msg) { _debugLogMessages.push(msg); };
+    var _getDebugLog = function() { return _debugLogMessages; };
+    this.getDebugLog = _getDebugLog;
+    var _clearDebugLog = function() { _debugLogMessages = []; };
+    this.clearDebugLog = _clearDebugLog;
 
     var _setNewView = function(newView, doWarp, doPlay, callBack) {
       if (typeof (newView) === 'undefined' || newView == null)
@@ -1252,6 +1473,13 @@ if (!window['$']) {
           callBack();
       };
 
+      var defaultParabolicMotionEndCallback = function() {
+        defaultEndViewCallback();
+        for (var i = parabolicMotionStoppedListeners.length - 1; i >= 0; i--) {
+          parabolicMotionStoppedListeners[i]();
+        }
+      };
+
       if (doWarp) {
         _addViewEndChangeListener(defaultEndViewCallback);
         _warpTo(newView);
@@ -1262,20 +1490,26 @@ if (!window['$']) {
           setTargetView(newView);
         } else {
           if (!parabolicMotionController) {
+            // When we do a parabolic move, pause the video and seek to the first frame.
+            // This should result in smoother transitions because the browser won't be trying to play and re-seek while moving.
+            if (!thisObj.isPaused() || thisObj.isDoingLoopingDwell()) {
+              thisObj.handlePlayPause();
+            }
+            _seek(0);
             parabolicMotionController = new parabolicMotionObj.MotionController({
               animationFPS: 1000 / animateRate,
               pathSpeed: parabolicMotionPathSpeed,
               animateCallback: function(pt) {
                 _warpTo(parabolicMotionObj.pixelPointToView(viewportWidth, viewportHeight, pt));
               },
-              onCompleteCallback: defaultEndViewCallback
+              onCompleteCallback: defaultParabolicMotionEndCallback
             });
           }
           var a = parabolicMotionObj.viewToPixelPoint(viewportWidth, viewportHeight, view);
           var b = parabolicMotionObj.viewToPixelPoint(viewportWidth, viewportHeight, newView);
           var path = org.gigapan.timelapse.parabolicMotion.computeParabolicPath(a, b);
-          parabolicMotionController.moveAlongPath(path);
           isMovingToWaypoint = true;
+          parabolicMotionController.moveAlongPath(path);
         }
       }
     };
@@ -1296,48 +1530,145 @@ if (!window['$']) {
         }
       } else if (newView.bbox) {// Bounding box view
         var newViewBbox = newView.bbox;
-        var newViewBboxNE = newViewBbox.ne;
-        var newViewBboxSW = newViewBbox.sw;
-        if (( typeof (tmJSON['projection-bounds']) !== 'undefined') && newViewBboxNE && newViewBboxSW && UTIL.isNumber(newViewBboxNE.lat) && UTIL.isNumber(newViewBboxNE.lng) && UTIL.isNumber(newViewBboxSW.lat) && UTIL.isNumber(newViewBboxSW.lng)) {
+        // For many years ne/sw was incorrectly used as the labels for nw/se. It has been corrected, but for legacy reasons we assume ne/sw actually refers to nw/se.
+        var newViewBboxNW = newViewBbox.nw || newViewBbox.ne;
+        var newViewBboxSE = newViewBbox.se || newViewBbox.sw;
+        if (( typeof (tmJSON['projection-bounds']) !== 'undefined') && newViewBboxNW && newViewBboxSE && UTIL.isNumber(newViewBboxNW.lat) && UTIL.isNumber(newViewBboxNW.lng) && UTIL.isNumber(newViewBboxSE.lat) && UTIL.isNumber(newViewBboxSE.lng)) {
           newView = latLngBoundingBoxToPixelCenter(newView);
         } else if (UTIL.isNumber(newViewBbox.xmin) && UTIL.isNumber(newViewBbox.xmax) && UTIL.isNumber(newViewBbox.ymin) && UTIL.isNumber(newViewBbox.ymax)) {
           newView = pixelBoundingBoxToPixelCenter(newView);
         } else {
           newView = view;
         }
+      } else if (UTIL.objectHasNullOrNaN(newView)) {
+        return null;
       }
       return newView;
     };
     this.normalizeView = _normalizeView;
 
-    var getShareView = function(sharedTimestamp, desiredView) {
-      sharedTimestamp = sharedTimestamp || thisObj.getCurrentTime().toFixed(2);
-      var hashparams = org.gigapan.Util.getUnsafeHashVars();
-      hashparams.v = _getViewStr(desiredView);
-      hashparams.t = sharedTimestamp;
-      hashparams.ps = (thisObj.getPlaybackRate() / thisObj.getMaxPlaybackRate()) * 100;
-      if (datasetType == "modis" && customUI.getLocker() != "none")
+    var getShareView = function(startTime, desiredView, options) {
+      options = typeof(options) == "undefined" ? {} : options;
+
+      // Get current URL params. It may include spreadsheet ids, etc. Or it may just be an empty object.
+      var hashparams = options.forThumbnail ? {} : org.gigapan.Util.getUnsafeHashVars();
+
+      // Keep the following in this order
+      // e.g: #v=6.1411,1.58464,0.629,latLng&t=0.08&ps=50&l=blsat&bt=19840101&et=20161231&startDwell=0&endDwell=0
+
+      // Get the view
+      if (desiredView && typeof(desiredView) === "string" && desiredView.indexOf(",")) {
+        // View is already in a seemingly valid string format
+        hashparams.v = desiredView;
+      } else {
+        // Turn view into a string
+        hashparams.v = _getViewStr(desiredView);
+      }
+
+      // Get the initial seek time
+      if (typeof(options.t) == "undefined") {
+        hashparams.t = typeof(startTime) != "undefined" ? parseFloat(startTime) : typeof(options.bt) == "undefined" ? parseFloat(thisObj.getCurrentTime().toFixed(2)) : thisObj.playbackTimeFromShareDate(options.bt);
+      } else {
+        hashparams.t = options.t;
+      }
+
+      // Get the playback speed
+      if (typeof(options.ps) == "undefined") {
+        hashparams.ps = (thisObj.getPlaybackRate() / thisObj.getMaxPlaybackRate()) * 100;
+      } else {
+        hashparams.ps = options.ps;
+      }
+
+      // Get the layers
+      if (typeof(options.l) != "undefined") {
+        hashparams.l = options.l;
+      } else if (typeof(activeEarthTimeLayers) != "undefined") {
+        hashparams.l = activeEarthTimeLayers.join(",");
+      } else if (typeof(gEarthTime) != "undefined") {
+        hashparams.l = gEarthTime.layerDB.visibleLayerIds().join(",");
+      }
+
+      if (hashparams.ps == 0) {
+        // Really this should just set 'et' to 'bt' but since we may want an exported video/gif that spans full start to end time, and yet have the
+        // ability to get a frozen frame from somewhere inbetween that range, we make use of 't' to do just that.
+        var pausedTime;
+        if (options.forceToBt) {
+          pausedTime = hashparams.bt || options.bt;
+        } else if (options.isForCurrentView) {
+          pausedTime = shareDateFromFrame(thisObj.timeToFrameNumber(hashparams.t), false);
+        } else {
+          pausedTime = hashparams.t;
+        }
+        hashparams.bt = pausedTime;
+        hashparams.et = pausedTime;
+      } else {
+        // Get the begin time. Often used for looping purposes, but also for thumbnail generation when in screenshot mode
+        if (typeof(options.bt) == "undefined") {
+          hashparams.bt = shareDateFromFrame(0, true);
+        } else {
+          hashparams.bt = options.bt;
+        }
+        // Get the end time. Often used for looping purposes, but also for thumbnail generation when in screenshot mode
+        if (typeof(options.et) == "undefined") {
+          hashparams.et = shareDateFromFrame(thisObj.getNumFrames() - 1, false);
+        } else {
+          hashparams.et = options.et;
+        }
+      }
+
+      // Get the start dwell. Relevant for looping with begin time and end time
+      if (typeof(options.startDwell) == "undefined") {
+        hashparams.startDwell = 0;
+      } else {
+        hashparams.startDwell = options.startDwell;
+      }
+
+      // Get the end dwell. Relevant for looping with begin time and end time
+      if (typeof(options.endDwell) == "undefined") {
+        hashparams.endDwell = 0;
+      } else {
+        hashparams.endDwell = options.endDwell;
+      }
+
+      if (datasetType == "modis" && customUI.getLocker() != "none") {
         hashparams.lk + customUI.getLocker();
+      }
+
       if (datasetType == "breathecam") {
         hashparams.d = settings["url"].match(/\d\d\d\d-\d\d-\d\d/);
         hashparams.s = tmJSON['id'];
       }
-      var selectedLayers = $("#layers-list, .ui-multiselect-checkboxes").find("input:checked");
-      if (selectedLayers.length) {
-        var layers = $.map(selectedLayers, function(obj) {
-          return $(obj).parent("label").attr("name");
-        });
-        hashparams.l = String(layers);
+
+      // Prepare shareView return string
+      var shareStr = "";
+
+      // EarthTime specific
+      var filterParamsForEarthTimeStoryMode = false;
+      if (!options.forThumbnail) {
+        if ($shareViewWaypointOnlyCheckbox.is(":visible") && $shareViewWaypointOnlyCheckbox.prop("checked")) {
+          delete hashparams['story'];
+          delete hashparams['theme'];
+          delete hashparams['waypointIdx'];
+        } else if (hashparams.story || window.location.href.indexOf("/stories") != -1) {
+          filterParamsForEarthTimeStoryMode = true;
+          delete hashparams['waypointIdx'];
+          if ($shareViewWaypointIndexCheckbox.is(":visible") && $shareViewWaypointIndexCheckbox.prop("checked")) {
+            var currentWaypointIndex = snaplapseForPresentationSlider.getSnaplapseViewer().getCurrentWaypointIndex();
+            shareStr = "#waypointIdx=" + currentWaypointIndex;
+          }
+        }
       }
-      var shareStr;
+
       for (var prop in hashparams) {
         if (hashparams.hasOwnProperty(prop)) {
+          // EarthTime specific
+          if (filterParamsForEarthTimeStoryMode && prop != "theme" && prop != "story" && prop != "waypointIdx" && prop != "waypoints" && prop != "csvlayers" && prop != "dotlayers") continue;
           if (shareStr) {
             shareStr += '&';
           } else {
             shareStr = '#';
           }
-          shareStr += prop + '=' + hashparams[prop];
+          shareStr += prop + '=' + String(hashparams[prop]).replace("=","");
         }
       }
       return shareStr;
@@ -1372,7 +1703,7 @@ if (!window['$']) {
           var isLatLng = false;
           var bboxView = unsafe_viewParam.bbox;
           for (var key in bboxView) {
-            if (key == "ne" || key == "sw") {
+            if (key == "ne" || key == "sw" || key == "nw" || key == "se") {
               isLatLng = true;
               for (var innerKey in bboxView[key])
                 tmpViewParam.push(bboxView[key][innerKey]);
@@ -1388,11 +1719,11 @@ if (!window['$']) {
       // If we still have a share URL (e.g. #v=44.96185,59.06233,4.5,latLng&t=0.10)
       // that has not been unpacked into an array of strings, do so now.
       if (typeof (unsafe_viewParam) === "string") {
-        unsafe_viewParam = unsafe_viewParam.split(",");
+        unsafe_viewParam = unsafe_viewParam.replace("#v=", "").split(",");
       }
 
       if (unsafe_viewParam.indexOf("latLng") != -1) {
-        if (unsafe_viewParam.length == 4)
+        if (unsafe_viewParam.length == 4) {
           view = {
             center: {
               "lat": parseFloat(unsafe_viewParam[0]),
@@ -1400,21 +1731,23 @@ if (!window['$']) {
             },
             "zoom": parseFloat(unsafe_viewParam[2])
           };
-        else if (unsafe_viewParam.length == 5)
+        } else if (unsafe_viewParam.length == 5) {
+          // share view was in the form NWSE
           view = {
             bbox: {
-              "ne": {
+              "nw": {
                 "lat": parseFloat(unsafe_viewParam[0]),
                 "lng": parseFloat(unsafe_viewParam[1])
               },
-              "sw": {
+              "se": {
                 "lat": parseFloat(unsafe_viewParam[2]),
                 "lng": parseFloat(unsafe_viewParam[3])
               }
             }
           };
+        }
       } else {// Assume points if the user did not specify latLng. Also allow for the omission of 'pts' param for backwards compatibility
-        if ((unsafe_viewParam.indexOf("pts") == -1 && unsafe_viewParam.length == 3) || unsafe_viewParam.length == 4)
+        if ((unsafe_viewParam.indexOf("pts") == -1 && unsafe_viewParam.length == 3) || unsafe_viewParam.length == 4) {
           view = {
             center: {
               "x": parseFloat(unsafe_viewParam[0]),
@@ -1422,15 +1755,17 @@ if (!window['$']) {
             },
             "zoom": parseFloat(unsafe_viewParam[2])
           };
-        else if ((unsafe_viewParam.indexOf("pts") == -1 && unsafe_viewParam.length == 4) || unsafe_viewParam.length == 5)
+        } else if ((unsafe_viewParam.indexOf("pts") == -1 && unsafe_viewParam.length == 4) || unsafe_viewParam.length == 5) {
+          // share view was in the form LTRB
           view = {
             bbox: {
               "xmin": parseFloat(unsafe_viewParam[0]),
-              "xmax": parseFloat(unsafe_viewParam[1]),
-              "ymin": parseFloat(unsafe_viewParam[2]),
+              "ymin": parseFloat(unsafe_viewParam[1]),
+              "xmax": parseFloat(unsafe_viewParam[2]),
               "ymax": parseFloat(unsafe_viewParam[3])
             }
           };
+        }
       }
       return view;
     };
@@ -1443,18 +1778,56 @@ if (!window['$']) {
     //
     // Public methods
     //
-    this.getThumbnailOfCurrentView = function(width, height) {
-      var snaplapse = thisObj.getSnaplapse();
+    this.getThumbnailOfView = function(view, width, height, isForCurrentView) {
+      isForCurrentView = typeof(isForCurrentView) == "undefined" ? true : isForCurrentView;
+
+      var snaplapse = thisObj.getSnaplapse() || thisObj.getSnaplapseForPresentationSlider();
       if (snaplapse) {
         var snaplapseViewer = snaplapse.getSnaplapseViewer();
-        if (!snaplapseViewer)
-          return null;
-        if (!width)
+        if (!snaplapseViewer) {
+          return "";
+        }
+        if (!width) {
           width = 126;
-        if (!height)
+        }
+        if (!height) {
           height = 73;
-        return snaplapseViewer.generateThumbnailURL(thumbnailServerRootTileUrl, thisObj.getBoundingBoxForCurrentView(), width, height, thisObj.getCurrentTime().toFixed(2));
+        }
+
+        var urlSettings = {
+          ps : 0,
+          width: width,
+          height: height,
+          format : "png",
+          isForCurrentView : isForCurrentView
+        };
+
+        // If view is a string then it's either a share view or garbage.
+        if (typeof(view) == "string") {
+          var shareViewHashParams = org.gigapan.Util.unpackVars(view);
+          var shareView = shareViewHashParams.v;
+          if (shareView) {
+            view = thisObj.unsafeViewToView(shareView);
+            urlSettings.t  = shareViewHashParams.t;
+            urlSettings.l = shareViewHashParams.l;
+            urlSettings.bt = shareViewHashParams.bt;
+            urlSettings.et = shareViewHashParams.et;
+          } else {
+            // Not a share view, so we are done.
+            return "";
+          }
+        }
+
+        urlSettings.bound = view;
+
+        return thisObj.getThumbnailTool().getURL(urlSettings).url;
+      } else {
+        return "";
       }
+    };
+
+    this.getThumbnailOfCurrentView = function(width, height) {
+      return thisObj.getThumbnailOfView(thisObj.getShareView(undefined, undefined, {ps: 0}), width, height);
     };
 
     var _isPaused = function() {
@@ -1466,7 +1839,6 @@ if (!window['$']) {
       window.clearTimeout(customPlaybackTimeout);
       window.clearTimeout(loopStartTimeoutId);
       window.clearTimeout(loopEndTimeoutId);
-      //thisObj.setPlaybackRate(originalPlaybackRate);
       videoset.pause();
 
       // Pano video is used for the timewarp map in editor
@@ -1485,10 +1857,13 @@ if (!window['$']) {
       // In IE, seeking to <= 50% of the first frame causes flickering from that point forward
       var minIESeekTime = (1 / _getFps()) * 0.5;
       var seekTime = Math.min(Math.max(0, t), timelapseDurationInSeconds);
-      if (isIE && seekTime < minIESeekTime)
+      if (isIE && seekTime < minIESeekTime) {
         seekTime = minIESeekTime;
-      videoset.seek(seekTime);
-      seek_panoVideo(seekTime);
+      }
+      if (!isNaN(seekTime)) {
+        videoset.seek(seekTime);
+        seek_panoVideo(seekTime);
+      }
     };
     this.seek = _seek;
 
@@ -1534,7 +1909,7 @@ if (!window['$']) {
     // The function is used for pausing the video for some duration
     // and optionally doing something afterwards
     var waitFor = function(seconds, callBack) {
-      // True means do not save the PlaybackRate
+      // True means do not save the playbackRate being passed in.
       thisObj.setPlaybackRate(0, true);
       return setTimeout(function() {
         if (callBack)
@@ -1549,8 +1924,16 @@ if (!window['$']) {
     };
 
     this.setMasterPlaybackRate = function(rate) {
-      defaultUI.setMaxPlaybackRate(rate);
-      customUI.setMaxPlaybackRate(rate);
+      var newRate = parseFloat(rate);
+      if (!isNaN(newRate)) {
+        defaultUI.setMaxPlaybackRate(newRate);
+        if (customUI) {
+          customUI.setMaxPlaybackRate(newRate);
+        }
+        for (var i = 0; i < masterPlaybackRateChangeListeners.length; i++) {
+          masterPlaybackRateChangeListeners[i](newRate);
+        }
+      }
     };
 
     this.getMaxPlaybackRate = function() {
@@ -1563,19 +1946,27 @@ if (!window['$']) {
       }
     };
 
-    this.setPlaybackRate = function(rate, preserveOriginalRate, skipUpdateUI) {
-      if (!preserveOriginalRate)
-        originalPlaybackRate = rate;
-      videoset.setPlaybackRate(rate);
+    this.setPlaybackRate = function(rate, skipPreserveOriginalRate, skipUpdateUI) {
+      var newRate = parseFloat(rate);
+      if (!isNaN(newRate)) {
+        if (!skipPreserveOriginalRate) {
+          originalPlaybackRate = newRate;
+        }
 
-      // Pano video is used for the timewarp map in editor
-      // TODO: This should probably be done through a listener
-      if (panoVideo && defaultUI.getMode() != "player" && !fullScreen) {
-        panoVideo.playbackRate = rate;
+        videoset.setPlaybackRate(newRate);
+
+        // Pano video is used for the timewarp map in editor
+        // TODO: This should probably be done through a listener
+        if (panoVideo && defaultUI.getMode() != "player" && !fullScreen) {
+          panoVideo.playbackRate = newRate;
+        }
+
+        for (var i = 0; i < playbackRateChangeListeners.length; i++) {
+          playbackRateChangeListeners[i](newRate, skipUpdateUI);
+        }
+
+        thisObj.updateShareViewTextbox();
       }
-
-      for (var i = 0; i < playbackRateChangeListeners.length; i++)
-        playbackRateChangeListeners[i](rate, skipUpdateUI);
     };
 
     this.toggleMainControls = function() {
@@ -1686,6 +2077,7 @@ if (!window['$']) {
     };
 
     this.setScale = function(val) {
+      if (isNaN(val) || !val) return;
       targetView.scale = val;
       setTargetView(targetView);
     };
@@ -1695,12 +2087,26 @@ if (!window['$']) {
       setTargetView(targetView);
     };
 
+    this.setVerticalCoverConstraint = function(ymin, ymax) {
+      verticalCoverConstraint = {ymin: ymin, ymax: ymax};
+    }
+
     var _getMinScale = function() {
-      return panoView.scale * 0.5;
+      if (verticalCoverConstraint) {
+        // Constraint on view is that we never show pixels above the top of ymin, or below the bottom of ymax
+        // Minimum scale is that at which the ymin...ymax covers the viewport vertically
+        return viewportHeight / (verticalCoverConstraint.ymax - verticalCoverConstraint.ymin);
+      } else {
+        return panoView.scale * 0.5;
+      }
     };
     this.getMinScale = _getMinScale;
 
     var _getMaxScale = function() {
+      if (gmapsMaxLevelOverride !== null) {
+        let pixelWidthAtOverride = 256 * (2 ** gmapsMaxLevelOverride);
+        return pixelWidthAtOverride / panoWidth;
+      }
       var extraScale = 1;
       if (levelThreshold < 0) {
         // If levelThreshold is less than 0, we'll show a video that's always
@@ -1735,10 +2141,25 @@ if (!window['$']) {
     };
     this.getDatasetJSON = _getDatasetJSON;
 
+    var _setDatasetJSON = function(json) {
+      datasetJSON = json;
+    };
+    this.setDatasetJSON = _setDatasetJSON;
+
     var _getTmJSON = function() {
       return tmJSON;
     };
     this.getTmJSON = _getTmJSON;
+
+    var _setTmJSON = function(json) {
+      tmJSON = json;
+    };
+    this.setTmJSON = _setTmJSON;
+
+    var _isSpinnerShowing = function() {
+      return isSpinnerShowing;
+    };
+    this.isSpinnerShowing = _isSpinnerShowing;
 
     var _fullScreen = function() {
       var viewerDiv = $('#' + viewerDivId)[0];
@@ -1802,7 +2223,7 @@ if (!window['$']) {
 
       var viewerBottomPx = 0;
       if (editorEnabled && UTIL.getSharedDataType() != "presentation")
-        viewerBottomPx = 210;
+        viewerBottomPx = 213;
 
       var userDefinedtimeMachineDivWidth = UTIL.getElementStyle("#" + timeMachineDivId, "width");
       var userDefinedtimeMachineDivHeight = UTIL.getElementStyle("#" + timeMachineDivId, "height");
@@ -1834,9 +2255,9 @@ if (!window['$']) {
       window.onresize = onresize;
     };
 
-    var onresize = function() {
+    var onresize = function(forceResize) {
       var $viewerDiv = $("#" + viewerDivId);
-      if (viewportWidth == $viewerDiv.width() && viewportHeight == $viewerDiv.height())
+      if (!forceResize && viewportWidth == $viewerDiv.width() && viewportHeight == $viewerDiv.height())
         return;
       resizeViewer();
       // TODO implement a resize listener and put this in the snaplapseViewer class
@@ -1858,12 +2279,6 @@ if (!window['$']) {
       if (changeDetectionTool)
         changeDetectionTool.resizeUI();
       updateLocationContextUI();
-      // Auto-center any viewer jQuery dialogs so they do not go off screen.
-      $("#" + viewerDivId + " .ui-dialog-content").dialog("option", "position", {
-        my: "center",
-        at: "center",
-        of: window
-      });
       // Run listeners
       for (var i = 0; i < resizeListeners.length; i++)
         resizeListeners[i](viewportWidth, viewportHeight);
@@ -1897,8 +2312,9 @@ if (!window['$']) {
 
     var resizeViewer = function() {
       var $viewerDiv = $("#" + viewerDivId);
+      var $tiledContentHolder = $("#" + viewerDivId + " .tiledContentHolder");
       viewportWidth = $viewerDiv.width();
-      viewportHeight = $viewerDiv.height();
+      viewportHeight = $viewerDiv.height() + $viewerDiv.offset().top - $tiledContentHolder.offset().top;
 
       // TODO: scale might not be correct when we unhide viewport
       if ($( "#" + viewerDivId + ":visible").length == 0) return;
@@ -1928,8 +2344,11 @@ if (!window['$']) {
       });
 
       // Rescale the canvas if we are on a screen that has a pixel ratio > 1
-      if (pixelRatio > 1 && viewerType != "video")
+      if (pixelRatio > 1 && viewerType == "canvas") {
         canvas.getContext('2d').scale(pixelRatio, pixelRatio);
+      } else if (viewerType == "webgl") {
+        gl.viewport(0, 0, viewportWidth * pixelRatio, viewportHeight * pixelRatio);
+      }
 
       // Stretching the video affects the home view,
       // set home view to undefined so that it gets recomputed
@@ -1977,6 +2396,14 @@ if (!window['$']) {
     // Private methods
     //
 
+    var setCaptureTimes = function(newCaptureTimes) {
+      captureTimes = newCaptureTimes;
+      frames = captureTimes.length;
+      timelapseDurationInSeconds = (frames - 0.7) / _getFps();
+      videoset.setDuration((1 / _getFps()) * frames);
+      timelapseCurrentCaptureTimeIndex = Math.min(frames - 1, Math.floor(timelapseCurrentTimeInSeconds * _getFps()));
+    };
+
     // Handle any hash variables related to time machines
     var handleHashChange = function() {
       var unsafeHashString = UTIL.getUnsafeHashString();
@@ -2002,19 +2429,23 @@ if (!window['$']) {
             view = _normalizeView(newView);
           }
         }
-        if (newTime) {
+        if (newTime != null && !isNaN(newTime)) {
           if (didFirstTimeOnLoad) {
             _seek(newTime);
           } else {
             initialTime = newTime;
           }
         }
-        if (newPlaybackSpeed) {
+        if (newPlaybackSpeed != null && !isNaN(newPlaybackSpeed)) {
           var newPlaybackRate = (newPlaybackSpeed / 100.0) * thisObj.getMaxPlaybackRate();
-          if (didFirstTimeOnLoad) {
-            thisObj.setPlaybackRate(newPlaybackRate);
+          if (newPlaybackRate == 0) {
+            _pause();
           } else {
-            playbackSpeed = newPlaybackRate;
+            if (didFirstTimeOnLoad) {
+              thisObj.setPlaybackRate(newPlaybackRate);
+            } else {
+              playbackSpeed = newPlaybackRate;
+            }
           }
         }
         return true;
@@ -2035,8 +2466,13 @@ if (!window['$']) {
 
     // Gets a safe time value (Float) from an unsafe object containing key-value pairs from the URL hash.
     var getTimeFromHash = function(unsafeHashObj) {
-      if (unsafeHashObj && unsafeHashObj.hasOwnProperty("t")) {
-        var newTime = parseFloat(unsafeHashObj.t);
+      if (unsafeHashObj) {
+        var newTime = null;
+        if (unsafeHashObj.hasOwnProperty("bt")) {
+          newTime = thisObj.playbackTimeFromShareDate(unsafeHashObj.bt);
+        } else if (unsafeHashObj.hasOwnProperty("t")) {
+          newTime = parseFloat(unsafeHashObj.t);
+        }
         return newTime;
       }
       return null;
@@ -2164,10 +2600,23 @@ if (!window['$']) {
     };
 
     var setTargetView = function(newView, offset) {
-      if (newView) {
+      if (newView && !isNaN(newView.x) && !isNaN(newView.y) && !isNaN(newView.scale)) {
         var tempView = {};
         tempView.scale = limitScale(newView.scale);
-        if (isHyperwall) {
+        if (verticalCoverConstraint) {
+          tempView.x = Math.max(0, Math.min(panoWidth, newView.x));
+          tempView.y = newView.y;
+          var top = newView.y - (viewportHeight / 2 / tempView.scale );
+          if (top < verticalCoverConstraint.ymin) {
+            tempView.y += (verticalCoverConstraint.ymin - top);
+          }
+          var bot = newView.y + (viewportHeight / 2 / tempView.scale);
+          if (bot > verticalCoverConstraint.ymax) {
+            tempView.y -= (bot - verticalCoverConstraint.ymax);
+          }
+          targetView.x = tempView.x;
+          targetView.y = tempView.y;
+        } else if (isHyperwall) {
           targetView.x = newView.x;
           targetView.y = newView.y;
         } else {
@@ -2179,9 +2628,11 @@ if (!window['$']) {
         targetView.scale = tempView.scale;
       } else {
         // Rather than specifying a new view, it is easier to just specify the offset for translating
-        if (offset) {
+        if (offset && !isNaN(offset.x) && !isNaN(offset.y)) {
           targetView.x += offset.x / view.scale;
           targetView.y += offset.y / view.scale;
+        } else {
+          return;
         }
       }
 
@@ -2195,13 +2646,15 @@ if (!window['$']) {
 
       refresh();
 
-      if (newView.scale != view.scale) {
-        for (var i = 0; i < zoomChangeListeners.length; i++)
+      if (newView.scale.toFixed(6) != view.scale.toFixed(6)) {
+        for (var i = 0; i < zoomChangeListeners.length; i++) {
           zoomChangeListeners[i](targetView);
+        }
       }
 
-      for (var i = 0; i < targetViewChangeListeners.length; i++)
+      for (var i = 0; i < targetViewChangeListeners.length; i++) {
         targetViewChangeListeners[i](targetView);
+      }
     };
     this.setTargetView = setTargetView;
 
@@ -2390,16 +2843,17 @@ if (!window['$']) {
         bbox = bbox.bbox;
 
       var projection = _getProjection();
-      var newViewBboxNE = bbox.ne;
-      var newViewBboxSW = bbox.sw;
+      // For many years ne/sw was incorrectly used as the labels for nw/se. It has been corrected, but for legacy reasons we assume ne/sw actually refers to nw/se.
+      var newViewBboxNW = bbox.nw || bbox.ne;
+      var newViewBboxSE = bbox.se || bbox.sw;
 
       var a = projection.latlngToPoint({
-        lat: newViewBboxNE.lat,
-        lng: newViewBboxNE.lng
+        lat: newViewBboxNW.lat,
+        lng: newViewBboxNW.lng
       });
       var b = projection.latlngToPoint({
-        lat: newViewBboxSW.lat,
-        lng: newViewBboxSW.lng
+        lat: newViewBboxSE.lat,
+        lng: newViewBboxSE.lng
       });
 
       var xmax = Math.max(a.x, b.x);
@@ -2515,7 +2969,7 @@ if (!window['$']) {
     var pixelCenterToPixelBoundingBoxView = function(theView) {
       if (!theView)
         return null;
-      if (!theView.scale)
+      if (typeof(theView.scale) == "undefined")
         theView = _normalizeView(theView);
 
       var halfWidth = 0.5 * viewportWidth / theView.scale;
@@ -2580,26 +3034,30 @@ if (!window['$']) {
       videoset.setFps(data['fps']);
       var framesToSkipAtStart = (data['frames'] < skippedFramesAtStart) ? 0 : skippedFramesAtStart;
       var framesToSkipAtEnd = (data['frames'] < skippedFramesAtEnd) ? 0 : skippedFramesAtEnd;
-      frames = data['frames'] - framesToSkipAtEnd - framesToSkipAtStart;
-      videoset.setDuration((1 / data['fps']) * frames);
       videoset.setLeader((data['leader'] + framesToSkipAtStart) / data['fps']);
       videoset.setIsSplitVideo(isSplitVideo);
       videoset.setSecondsPerFragment(secondsPerFragment);
       maxLevel = data['nlevels'] - 1;
       levelInfo = data['level_info'];
       metadata = data;
-      timelapseDurationInSeconds = (frames - 0.7) / data['fps'];
-
-      // Set capture time
+      // Set capture times
       if (tmJSON["capture-times"]) {
         tmJSON["capture-times"].splice(tmJSON["capture-times"].length - framesToSkipAtEnd, framesToSkipAtEnd);
         tmJSON["capture-times"].splice(0, framesToSkipAtStart);
-        captureTimes = tmJSON["capture-times"];
       } else {
+        tmJSON["capture-times"] = [];
         for (var i = 0; i < frames; i++) {
-          captureTimes.push("--");
+          tmJSON["capture-times"].push("--");
         }
       }
+      setCaptureTimes(tmJSON["capture-times"]);
+    };
+
+    var drawToWebgl = function() {
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      timelapse.lastFrameCompletelyDrawn = true;
+      webglTimeMachineLayer.draw(timelapse.getView(), { videoTile: true, vectorTile: false });
+      org.gigapan.Util.requestAnimationFrame.call(window, drawToWebgl);
     };
 
     var refresh = function() {
@@ -2619,20 +3077,20 @@ if (!window['$']) {
       }
     };
 
-    var getTimelapseCurrentTimeInSeconds = function() {
-      return timelapseCurrentTimeInSeconds;
-    };
-    this.getTimelapseCurrentTimeInSeconds = getTimelapseCurrentTimeInSeconds;
-
     var getCurrentFrameNumber = function() {
       return Math.floor(timelapseCurrentTimeInSeconds * _getFps());
     };
     this.getCurrentFrameNumber = getCurrentFrameNumber;
 
     var frameNumberToTime = function(value) {
-      return (value + timePadding) / _getFps();
+      return parseFloat(((value + timePadding) / _getFps()).toFixed(2));
     };
     this.frameNumberToTime = frameNumberToTime;
+
+    var timeToFrameNumber = function(value) {
+      return Math.floor(value * _getFps());
+    };
+    this.timeToFrameNumber = timeToFrameNumber;
 
     // Update the scale bar and the context map
     // Need to call this when changing the view
@@ -2663,8 +3121,8 @@ if (!window['$']) {
         // Update context maps
         if (visualizer || contextMap) {
           var desiredBound = pixelCenterToPixelBoundingBoxView(desiredView).bbox;
-          if (videoViewer_projection && contextMap && enableContextMap == true) {
-            contextMap.setMap(desiredBound, latlngCenter);
+          if (videoViewer_projection && contextMap && enableContextMap == true && latlngCenter) {
+            contextMap.setMiniMap(desiredBound, latlngCenter);
           }
           if (visualizer) {
             visualizer.setMap(desiredBound);
@@ -2690,7 +3148,9 @@ if (!window['$']) {
           unsafe_sharedData = unsafe_sharedVars.presentation;
           snaplapseForSharedData = snaplapseForPresentationSlider;
           var $keyframeContainer = snaplapseForPresentationSlider.getSnaplapseViewer().getKeyframeContainer();
-          addViewerBottomMargin($keyframeContainer.outerHeight() - 1);
+          if (waypointSliderOrientation == "horizontal") {
+            addViewerBottomMargin($keyframeContainer.outerHeight() - 1);
+          }
           UTIL.addGoogleAnalyticEvent('window', 'onHashChange', 'url-load-presentation');
         }
         // Handle the shared data
@@ -2718,6 +3178,145 @@ if (!window['$']) {
       }
     };
     this.loadSharedDataFromUnsafeURL = loadSharedDataFromUnsafeURL;
+
+    var loadUnsafePanelContent = function(unsafeJSON) {
+      var snaplapseForPresentationSlider = timelapse.getSnaplapseForPresentationSlider();
+
+      if (!snaplapseForPresentationSlider) return;
+
+      var hashVars = org.gigapan.Util.getUnsafeHashVars();
+
+      var snaplapseViewerForSharedData = snaplapseForPresentationSlider.getSnaplapseViewer();
+
+      // TODO: Handle case where JSON is pulled locally?
+      if (!hashVars.presentation && unsafeJSON && unsafeJSON['product-highlights-spreadsheet-path']) {
+        UTIL.gdocToJSON(unsafeJSON['product-highlights-spreadsheet-path'], function(csvdata) {
+          if (csvdata) {
+            var csvRawArray = csvdata.replace(/"/g,"\t").split("\n");
+            if (csvRawArray.length) {
+              var csvHeaders = csvRawArray[0].split(/\t?,?\t/);
+              var csvArray = [];
+              for (var i = 1; i < csvRawArray.length; i++) {
+                var rowDataArray = csvRawArray[i].split(/\t?,?\t/);
+                var rowDataDic = {};
+                for (var j = 0; j < rowDataArray.length; j++) {
+                  if (!csvHeaders[j]) continue;
+                  var headingName = csvHeaders[j].replace(/\r?\n?/g, '').trim();
+                  var rowData = rowDataArray[j].replace(/\r?\n?/g, '').trim();
+                  rowDataDic[headingName] = rowData;
+                }
+                csvArray.push(rowDataDic);
+              }
+              var waypointJSONList = snaplapseForPresentationSlider.CSVToJSONList(csvArray);
+
+              var themeContentArray = [];
+              for (var themeId in waypointJSONList) {
+                var themeTitle = waypointJSONList[themeId].themeTitle;
+                var themeEnabled = waypointJSONList[themeId].enabled;
+                if (!themeEnabled) continue;
+                var waypointJSONString = waypointJSONList[themeId].stories["default"].waypoints;
+                var $themeContent = $("<h3 id='theme_" + themeId + "'>" + themeTitle + "</h3><table></table>");
+                $themeContent.data("waypoint-json-string", waypointJSONString);
+                themeContentArray.push($themeContent);
+              }
+
+              if (themeContentArray.length > 1) {
+                $("#etDrawerProductHighlightsContent").show().append(themeContentArray).accordion({
+                  collapsible: true,
+                  active: false,
+                  animate: false,
+                  heightStyle: 'content',
+                  activate: function(event, ui) {
+                    if (ui.newHeader.length) {
+                      var $waypointContainer = ui.newHeader.next("table");
+                      if ($waypointContainer.children().length) return;
+                      var waypointJSON = ui.newHeader.data("waypoint-json-string");
+                      $waypointContainer.html($(".presentationSlider"));
+                      snaplapseViewerForSharedData.loadNewSnaplapse(waypointJSON, false);
+                    }
+                  }
+                });
+                // TODO: Pre-select the first group?
+              } else {
+                var waypointJSON = themeContentArray[0].data("waypoint-json-string");
+                snaplapseViewerForSharedData.loadNewSnaplapse(waypointJSON, false);
+              }
+            }
+          }
+        }, null, true);
+      }
+
+      var $keyframeContainer = snaplapseForPresentationSlider.getSnaplapseViewer().getKeyframeContainer();
+      var $waypointDrawerContainerMain = $("#" + viewerDivId + " .waypointDrawerContainerMain");
+      var $waypointDrawerContainer = $("#" + viewerDivId + " .waypointDrawerContainer");
+      var $waypointDrawerContainerHeader = $("#" + viewerDivId + " .waypointDrawerContainerHeader");
+
+      UTIL.verticalTouchScroll($waypointDrawerContainer);
+
+      if (waypointSliderOrientation == "horizontal") {
+        addViewerBottomMargin($keyframeContainer.outerHeight() - 1);
+      }
+      $(".etDrawerContainerTitle").text(unsafeJSON['product-title'] || "My Project");
+      if (unsafeJSON['product-about']) {
+        $(".etDrawerProductAboutDescriptionContent").text(unsafeJSON['product-about']);
+      } else {
+        $(".etDrawerAbout, .etDrawerAbout + .etDrawerSectionSeparator").hide();
+      }
+
+      $(".etDrawerProductHighlightsHeading").text(unsafeJSON['product-highlights-title'] || "Project Highlights");
+      $(".etDrawerLearnMoreExit").hide();
+
+      $(".etDrawerLearnMoreExpand").on("click", function() {
+        var $etDrawerProductLearnMoreContent = $("#" + viewerDivId + " .etDrawerProductLearnMoreContent");
+        if ($etDrawerProductLearnMoreContent.text().length == 0) {
+          UTIL.ajax("html", rootAppURL, "templates/" + unsafeJSON['learn-more-template-name'], function(html) {
+            $etDrawerProductLearnMoreContent.html(html);
+            $etDrawerProductLearnMoreContent.show("slide", { direction: "right" }, 250);
+          });
+        } else {
+          $etDrawerProductLearnMoreContent.show("slide", { direction: "right" }, 250);
+        }
+        $(".etDrawerLearnMoreExit").show();
+        $(".etDrawerLearnMoreExpand, .etDrawerProductHighlights, .etDrawerProductAboutDescriptionContent, .etDrawerSectionSeparator").hide();
+        $(".etDrawerProductAboutHeading").addClass("maximized");
+      });
+
+      $(".etDrawerLearnMoreExit").on("click", function() {
+        $(this).hide();
+        $(".etDrawerProductLearnMoreContent").hide();
+        $(".etDrawerLearnMoreExpand, .etDrawerSectionSeparator").show();
+        $(".etDrawerProductHighlights, .etDrawerProductAboutDescriptionContent").show("slide", { direction: "left" }, 250);
+        $(".etDrawerProductAboutHeading").removeClass("maximized");
+      });
+
+      if (mobileUI) {
+        $waypointDrawerContainer.show();
+      } else {
+        if (!hashVars.tour) {
+          $waypointDrawerContainerMain.removeClass("hidden");
+          if (openWaypointSliderOnFirstLoad) {
+            setTimeout(function() {
+              $("#" + timeMachineDivId).addClass("waypointDrawerOpen");
+              $waypointDrawerContainerMain.removeClass("waypointDrawerClosed");
+              if (uiType == "materialUI") {
+                setTimeout(function() {
+                  materialUI.refocusTimeline();
+                }, 400);
+              }
+            }, 50);
+          }
+        }
+
+        $waypointDrawerContainer.on("scroll", function(e) {
+          if (this.scrollTop == 0) {
+            $waypointDrawerContainerHeader.removeClass("scrolled");
+          } else {
+            $waypointDrawerContainerHeader.addClass("scrolled");
+          }
+        });
+      }
+    };
+    this.loadUnsafePanelContent = loadUnsafePanelContent;
 
     var needFirstAncestor = function(tileidx) {
       //UTIL.log("need ancestor for " + dumpTileidx(tileidx));
@@ -2925,13 +3524,18 @@ if (!window['$']) {
             if (snaplapse != null && snaplapse.isPlaying())
               return;
             if (loopPlayback) {
+              if (shareViewLoopInterval) {
+                return;
+              }
               if (loopDwell) {
                 if (doingLoopingDwell)
                   return;
                 doingLoopingDwell = true;
+                whichDwell = 'end';
                 updateCustomPlayback();
                 _pause();
                 loopStartTimeoutId = window.setTimeout(function() {
+                  whichDwell = 'start';
                   _seek(0);
                   loopEndTimeoutId = window.setTimeout(function() {
                     _play();
@@ -2952,10 +3556,15 @@ if (!window['$']) {
         $("#" + timeMachineDivId + " .currentTime").html(UTIL.formatTime(timelapseCurrentTimeInSeconds, true));
         $("#" + timeMachineDivId + " .currentCaptureTime").html(UTIL.htmlForTextWithEmbeddedNewlines(captureTimes[timelapseCurrentCaptureTimeIndex]));
         $("#" + timeMachineDivId + " .timelineSlider").slider("value", (timelapseCurrentTimeInSeconds * _getFps() - timePadding));
+        thisObj.updateShareViewTextbox();
       });
 
       _addTargetViewChangeListener(function(view) {
-        $("#" + timeMachineDivId + " .zoomSlider").slider("value", _viewScaleToZoomSlider(view.scale));
+        // TODO: Do we still use the zoom slider UI?
+        try {
+          $("#" + timeMachineDivId + " .zoomSlider").slider("value", _viewScaleToZoomSlider(view.scale));
+        } catch(e) {
+        }
       });
 
       _addViewChangeListener(function() {
@@ -2972,121 +3581,27 @@ if (!window['$']) {
         // so we need to make sure the play button is updated.
         if (doingLoopingDwell)
           return;
-        // TODO: UI Class should handle this
         if (customUI) {
-          $("#" + timeMachineDivId + " .customPlay").button({
-            icons: {
-              primary: "ui-icon-custom-play"
-            },
-            text: false
-          }).attr({
-            "title": "Play"
-          });
-          if (customUI.getLocker() != "month") {
-            // The UI when the month locker is enabled is handled in customUI.js
-            $("#" + timeMachineDivId + " .modisCustomPlay").button({
-              icons: {
-                primary: "ui-icon-custom-play"
-              },
-              text: false
-            }).attr({
-              "title": "Play"
-            });
-          }
+          customUI.setPlaybackButtonIcon("pause");
         }
-        // TODO: UI Class should handle this
-        $("#" + timeMachineDivId + " .playbackButton").button({
-          icons: {
-            secondary: "ui-icon-custom-play"
-          }
-        }).attr('title', 'Play');
-        $("#" + timeMachineDivId + " .playbackButton").removeClass("pause").addClass("play").attr('title', 'Play');
+        if (defaultUI) {
+          defaultUI.setPlaybackButtonIcon("pause");
+        }
       });
 
       _addVideoPlayListener(function() {
         // Always make sure that when we are playing, the button status is updated
         if (doingLoopingDwell)
           return;
-        // TODO: UI Class should handle this
         if (customUI) {
-          $("#" + timeMachineDivId + " .customPlay").button({
-            icons: {
-              primary: "ui-icon-custom-pause"
-            },
-            text: false
-          }).attr({
-            "title": "Pause"
-          });
-          if (customUI.getLocker() != "month") {
-            // The UI when the month locker is enabled is handled in customUI.js
-            $("#" + timeMachineDivId + " .modisCustomPlay").button({
-              icons: {
-                primary: "ui-icon-custom-pause"
-              },
-              text: false
-            }).attr({
-              "title": "Pause"
-            });
-          }
+          customUI.setPlaybackButtonIcon("play");
         }
-        // TODO: UI Class should handle this
-        $("#" + timeMachineDivId + " .playbackButton").button({
-          icons: {
-            secondary: "ui-icon-custom-pause"
-          }
-        }).attr('title', 'Pause');
-        $("#" + timeMachineDivId + " .playbackButton").removeClass("play").addClass("pause").attr('title', 'Pause');
-      });
-
-      _makeVideoVisibleListener(function(videoId) {
-        // This is the first video of the dataset being displayed
-        if (videoId == firstVideoId) {
-          if (desiredInitialDate) {
-            initialTime = findExactOrClosestCaptureTime(String(desiredInitialDate)) / _getFps();
-          }
-          if (initialTime == 0) {
-            timelapseCurrentTimeInSeconds = 0;
-            // Fixes Safari/IE bug which causes the video to not be displayed if the video has no leader and the initial
-            // time is zero (the video seeked event is never fired, so videoset never gets the cue that the video
-            // should be displayed).  The fix is to simply seek half a frame in.  Yeah, the video won't be starting at
-            // *zero*, but the displayed frame will still be the right one, so...good enough.  :-)
-            //if (videoset.getLeader() <= 0 && (isSafari || isIE)) {
-            if (isSafari || isIE) {
-              var halfOfAFrame = 1 / _getFps() / 2;
-              _seek(halfOfAFrame);
-            }
-          } else {
-            timelapseCurrentTimeInSeconds = initialTime;
-            _seek(initialTime);
-          }
-
-          if (didFirstTimeOnLoad) {
-            timelapseCurrentCaptureTimeIndex = Math.min(frames - 1, Math.floor(timelapseCurrentTimeInSeconds * _getFps()));
-            // Recreate timeline slider.
-            // There seems to be an issue with the jQuery UI slider widget, since just changing the max value and refreshing
-            // the slider does not proplerly update the available range. So we have to manually recreate it...
-            if (customUI) {
-              customUI.resetCustomTimeline();
-            } else {
-              defaultUI.resetTimelineSlider();
-            }
-          } else {
-            loadSharedDataFromUnsafeURL(UTIL.getUnsafeHashString());
-            didFirstTimeOnLoad = true;
-            // Fire onTimeMachinePlayerReady the first time the page is loaded.
-            if (typeof (settings["onTimeMachinePlayerReady"]) === "function") {
-              settings["onTimeMachinePlayerReady"](timeMachineDivId);
-            }
-          }
-          hideSpinner(viewerDivId);
-          if (typeof onNewTimelapseLoadCompleteCallBack === "function")
-            onNewTimelapseLoadCompleteCallBack();
-
-          for (var i = 0; i < datasetLoadedListeners.length; i++)
-            datasetLoadedListeners[i]();
-
+        if (defaultUI) {
+          defaultUI.setPlaybackButtonIcon("play");
         }
       });
+
+      _makeVideoVisibleListener(handleDatasetFirstVideoVisible);
 
       snaplapseForSharedTour = new org.gigapan.timelapse.Snaplapse(thisObj, settings, "noUI");
 
@@ -3103,8 +3618,10 @@ if (!window['$']) {
         // Visualizer loads a top level video to be used as a context map in the editor. It seeks when the main video also seeks.
         // Most likely that is at the heart of the problem.
         //
+        // IMPORTANT: Visualizer is not compatible with webgl viewer type.
+        //
         // Timewarp visualizer that shows the location of the current view and transitions between keyframes
-        if (enableContextMapOnDefaultUI && !tmJSON['projection-bounds'])
+        if (enableContextMapOnDefaultUI && !tmJSON['projection-bounds'] && viewerType != "webgl")
           visualizer = new org.gigapan.timelapse.Visualizer(thisObj, snaplapse, visualizerGeometry);
       }
 
@@ -3112,10 +3629,7 @@ if (!window['$']) {
         snaplapseForPresentationSlider = new org.gigapan.timelapse.Snaplapse(thisObj, settings, "presentation");
       if (annotatorEnabled)
         annotator = new org.gigapan.timelapse.Annotator(thisObj);
-      if (useThumbnailServer && settings["showThumbnailTool"]) {
-        var view = thisObj.getView();
-        var scaleOffset = 40 / view.scale;
-        var thumbnailToolOptions = {};
+      if (useThumbnailServer) {
         thumbnailTool = new ThumbnailTool(thisObj, thumbnailToolOptions);
       }
       if (changeDetectionEnabled) {
@@ -3124,10 +3638,23 @@ if (!window['$']) {
       }
 
       defaultUI = new org.gigapan.timelapse.DefaultUI(thisObj, settings);
-      if (useCustomUI)
-        customUI = new org.gigapan.timelapse.CustomUI(thisObj, settings);
 
-      if(timelineMetadataVisualizerEnabled) {
+      if (editorEnabled) {
+        thisObj.setMode("editor");
+      }
+
+      if (uiType == "materialUI" && org.gigapan.timelapse.MaterialUI) {
+        customLayers = new org.gigapan.timelapse.CustomLayers(thisObj, settings);
+        materialUI = new org.gigapan.timelapse.MaterialUI(thisObj, settings);
+      } else if (useCustomUI) {
+        customUI = new org.gigapan.timelapse.CustomUI(thisObj, settings);
+      }
+
+      if (isMobileDevice && org.gigapan.timelapse.MobileUI) {
+        mobileUI = new org.gigapan.timelapse.MobileUI(thisObj, settings);
+      }
+
+      if (timelineMetadataVisualizerEnabled) {
         timelineMetadataVisualizer = new org.gigapan.timelapse.TimelineMetadataVisualizer(thisObj);
       }
 
@@ -3136,13 +3663,13 @@ if (!window['$']) {
       //handlePluginVideoTagOverride();
 
       // Must be placed after customUI is created
-      if (settings["scaleBarOptions"] && tmJSON['projection-bounds'])
+      if (!isMobileDevice && settings["scaleBarOptions"] && tmJSON['projection-bounds'])
         scaleBar = new org.gigapan.timelapse.ScaleBar(settings["scaleBarOptions"], thisObj);
 
       if (isHyperwall)
         customUI.handleHyperwallChangeUI();
 
-      if (settings["contextMapOptions"] && tmJSON['projection-bounds'] /*&& typeof google !== "undefined"*/) {
+      if (!isMobileDevice && settings["contextMapOptions"] && tmJSON['projection-bounds'] /*&& typeof google !== "undefined"*/) {
         if (!isHyperwall || fields.showMap)
           contextMap = new org.gigapan.timelapse.ContextMap(settings["contextMapOptions"], thisObj, settings);
       }
@@ -3157,28 +3684,20 @@ if (!window['$']) {
 
       // The UI is now ready and we can display it
       $("#" + viewerDivId).css("visibility", "visible");
-      if (viewerType == "webgl")
-        hideSpinner(viewerDivId);
 
-      // Force initial focus on viewer
-      $(videoDiv).focus();
-
-      // If webgl, we need to force trigger this since no video tags will fire this.
-      if (viewerType == "webgl") {
-        didFirstTimeOnLoad = true;
-        // Fire onTimeMachinePlayerReady the first time the page is loaded.
-        if (typeof (settings["onTimeMachinePlayerReady"]) === "function") {
-          settings["onTimeMachinePlayerReady"](timeMachineDivId);
-        }
+      // Force initial focus on viewer only if we are not inside an iframe
+      if (window && (window.self === window.top)) {
+        $(videoDiv).focus();
       }
+      // End of setupTimelapse()
     }
 
     var switchLayer = function(layerNum) {
       if (layerNum == datasetLayer) return;
       showSpinner(viewerDivId);
       datasetLayer = layerNum;
-      initialTime = timelapse.getCurrentTime();
-      initialView = timelapse.getView();
+      initialTime = thisObj.getCurrentTime();
+      initialView = thisObj.getView();
       settings["initialView"] = initialView;
       settings["initialTime"] = initialTime;
       loadTimelapseCallback(tmJSON);
@@ -3195,16 +3714,19 @@ if (!window['$']) {
 
     var loadNewTimelineFromObj = function(obj, newTimelineStyle) {
       currentTimelineStyle = newTimelineStyle;
-      loadNewTimelineCallback(obj)
+      loadNewTimelineCallback(obj);
     };
     this.loadNewTimelineFromObj = loadNewTimelineFromObj;
 
     var loadNewTimelineCallback = function(json) {
-      captureTimes = json["capture-times"];
-      frames = captureTimes.length;
-      timelapseDurationInSeconds = (frames - 0.7) / _getFps();
-      videoset.setDuration((1 / _getFps()) * frames);
-      timelapseCurrentCaptureTimeIndex = Math.min(frames - 1, Math.floor(timelapseCurrentTimeInSeconds * _getFps()));
+      var previousCaptureTime = shareDateFromFrame(thisObj.getCurrentFrameNumber());
+
+      // Sanitize capture times to exclude html tags
+      json["capture-times"] = json["capture-times"].map(function (captureTime) {
+        return captureTime.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      });
+
+      setCaptureTimes(json["capture-times"]);
       var timelineVisible = $("#" + timeMachineDivId + " .controls").is(":visible") || $("#" + timeMachineDivId + " .customTimeline").is(":visible");
       if (currentTimelineStyle == "customUI") {
         $("#" + timeMachineDivId + " .controls").hide();
@@ -3219,7 +3741,7 @@ if (!window['$']) {
           $("#" + timeMachineDivId + " .customPlay").hide();
           $("#" + timeMachineDivId + " .customToggleSpeed").hide();
         }
-      } else {
+      } else if (currentTimelineStyle == "defaultUI") {
         $("#" + timeMachineDivId + " .customControl").hide();
         $("#" + timeMachineDivId + " .controls").show();
         $("#" + timeMachineDivId + " .helpPlayerLabel").hide();
@@ -3227,32 +3749,40 @@ if (!window['$']) {
         $("#" + timeMachineDivId + " .timelineSliderFiller").css("right", "80px").show();
         $("#" + timeMachineDivId + " .captureTime").show();
         $("#" + timeMachineDivId + " .help").hide();
-
         defaultUI.resetTimelineSlider();
-
         if (!timelineVisible) {
           $("#" + timeMachineDivId + " .controls").hide();
           $("#" + timeMachineDivId + " .captureTime").hide();
         }
       }
 
+      // Need to update the internal time counter. We seek to the start of the new timeline.
+      // If a different timestamp is desired, this seek will happen later in that callback or similar.
+      thisObj.seek(0);
+
+      // If there are looping params currently set, this implies there is a waypoint active that is using them.
+      // It is possible a waypoint loaded before this new timeline finished loading, which would mean the duration used was incorrect.
+      // So, we need to re-run timelapse.handleShareViewTimeLoop() with the current waypoint's looping params.
+      if (Object.keys(currentLoopingParams)) {
+        timelapse.handleShareViewTimeLoop(currentLoopingParams.beginTime, currentLoopingParams.endTime, currentLoopingParams.startDwell, currentLoopingParams.endDwell);
+      }
+
       for (var i = 0; i < timelineUIChangeListeners.length; i++)
-        timelineUIChangeListeners[i]();
+        timelineUIChangeListeners[i]({captureTimeBeforeTimelineChange: previousCaptureTime});
     };
 
     var loadTimelapse = function(url, desiredView, desiredTime, preserveViewAndTime, desiredDate, onLoadCompleteCallBack) {
-
       if (preserveViewAndTime) {
         // TODO: Assumes dates of the form yyyy-mm-dd hh:mm:ss
-        desiredDate = timelapse.getCurrentCaptureTime().substr(11, 8);
-        desiredView = timelapse.getView();
+        desiredDate = thisObj.getCurrentCaptureTime().substr(11, 8);
+        desiredView = thisObj.getView();
       }
 
       if (didFirstTimeOnLoad && desiredDate && url && settings["url"].indexOf(url) >= 0) {
         var newFrame = findExactOrClosestCaptureTime(String(desiredDate));
-        timelapse.seekToFrame(newFrame);
+        thisObj.seekToFrame(newFrame);
         if (desiredView)
-          timelapse.warpTo(desiredView);
+          thisObj.warpTo(desiredView);
         return;
       }
 
@@ -3271,11 +3801,13 @@ if (!window['$']) {
       }
       settings["initialView"] = initialView;
 
-      // Set the initial desired date
-      desiredInitialDate = desiredDate;
-
-      // If the user specifies a starting time, use it.
-      if (desiredTime && typeof (desiredTime) === "number") {
+      if (desiredDate && typeof(desiredDate) === "string") {
+        // If the user specifies a date string, use it.
+        // However, need to wait until the timeline data has loaded for this dataset.
+        // See end of loadVideoSetCallback() for the next step.
+        desiredInitialDate = desiredDate;
+      } else if (desiredTime && typeof(desiredTime) === "number") {
+        // If the user specifies a starting time, use it
         initialTime = desiredTime;
         settings["initialTime"] = initialTime;
       } else {
@@ -3285,17 +3817,53 @@ if (!window['$']) {
       // Set the call back
       onNewTimelapseLoadCompleteCallBack = onLoadCompleteCallBack;
 
-      UTIL.ajax("json", settings["url"], "tm.json" + getMetadataCacheBreaker(), loadTimelapseCallback);
+      tileRootPath = settings["url"];
+
+      if ((!isEarthTime || isEarthTimeMinimal) && viewerType == "webgl") {
+        var canvasLayer = {
+          timelapse: thisObj,
+          canvas: canvas,
+          resolutionScale: pixelRatio
+        };
+        var webglTimeMachineLayerOptions = {
+          mediaType: mediaType,
+          metadataLoadedCallback: loadVideoSetCallback,
+          rootUrl : tileRootPath,
+        };
+        if (cached_ajax && cached_ajax["./tm.json"]) {
+          tmJSON = cached_ajax["./tm.json"];
+          var datasetId = tmJSON["datasets"][0].id;
+          datasetJSON = cached_ajax["./" + datasetId + "/r.json"];
+          if (datasetJSON) {
+            webglTimeMachineLayerOptions = {
+              numFrames: datasetJSON.frames,
+              fps: datasetJSON.fps,
+              width: datasetJSON.width,
+              height: datasetJSON.height,
+              video_width: datasetJSON.video_width,
+              video_height: datasetJSON.video_height,
+              mediaType: mediaType,
+              metadataLoadedCallback: loadVideoSetCallback,
+              tileRootUrl: tileRootPath + datasetId,
+              maxLevelOverride: settings.maxLevelOverride
+            };
+          }
+        }
+        webglTimeMachineLayer = new WebglTimeMachineLayer(glb, canvasLayer, webglTimeMachineLayerOptions);
+        org.gigapan.Util.requestAnimationFrame.call(window, drawToWebgl);
+      } else {
+        UTIL.ajax("json", settings["url"], "tm.json" + getMetadataCacheBreaker(), loadTimelapseCallback);
+      }
     };
     this.loadTimelapse = loadTimelapse;
 
     var loadTimelapseCallback = function(json) {
-      tmJSON = json;
-      // Assume tiles and json are on same host
-      tileRootPath = settings["url"];
-
+      if (json) {
+        tmJSON = json;
+      }
       validateAndSetDatasetIndex(datasetLayer);
       var path = tmJSON["datasets"][datasetIndex]['id'] + "/";
+      // Assume tiles and json are on same host
       datasetPath = settings["url"] + path;
       UTIL.ajax("json", settings["url"], path + "r.json" + getMetadataCacheBreaker(), loadVideoSetCallback);
     };
@@ -3304,37 +3872,21 @@ if (!window['$']) {
     // 2015-04-08 16:30:25.000
     // 2015-04-08 16:30:25
     // 2015-04-08 16:30
+    // 2019-04-08 4:30 PM
     // 16:30:25
     // 16:30
     // Wed Apr 08 2015 16:30:25 GMT-0400 (Eastern Daylight Time)
     // Wed Apr 08 2015, 16:30:25.000
-    var findExactOrClosestCaptureTime = function(timeToFind, direction) {
+    // 2019-04-08 16:30:25 UTC
+    // 2019-04-08 16:30:25 America/New_York
+    var findExactOrClosestCaptureTime = function(timeToFind, direction, exactOnly) {
       var low = 0, high = captureTimes.length - 1, i, newCompare;
       if (!timeToFind)
         return null;
-      // Requested date may not have seconds
-      var subStrLength = captureTimes[0].match(/\d\d:\d\d:\d\d/) ? 8 : 5;
-      // FireFox/IE cannot parse a Date in the form of "Thu Apr 09 2015, 08:52:35.000" (milliseconds must be removed)
-      var sanitized_timeToFind = timeToFind.split(".")[0];
-      // If a date string has dashes (i.e. 2015-04-09 08:52:35 GMT-0400), replace with slashes since IE/FireFox Date parser does not support this.
-      // However, be sure not to remove the dash from the timezone field.
-      var dashSubString = sanitized_timeToFind.match(/\d\d\d\d-\d\d-\d\d/);
-      if (dashSubString) {
-        var slashSubString = dashSubString[0].replace(/-/g, "/");
-        sanitized_timeToFind.replace(dashSubString, slashSubString);
-      }
-      sanitized_timeToFind = new Date(sanitized_timeToFind);
-      var tmpNewCompare = new Date(captureTimes[Math.max(0, frames - 1)].replace(/-/g, "/").replace("UTC", ""));
-      // If date parsing fails, we assume the input only included the hour, min, [sec], so manually insert a year, month, day based on captureTime array
-      if (String(sanitized_timeToFind).indexOf("Invalid") >= 0) {
-        var yearMonthDay = tmpNewCompare.getFullYear() + "/" + (1e2 + (tmpNewCompare.getMonth() + 1) + '').substr(1) + "/" + (1e2 + (tmpNewCompare.getDate()) + '').substr(1) + " ";
-        sanitized_timeToFind = new Date(yearMonthDay + timeToFind);
-      }
-      // Convert to epoch time for comparisons
-      sanitized_timeToFind = sanitized_timeToFind.getTime();
+      var sanitized_timeToFind = sanitizedParseTimeEpoch(timeToFind);
       while (low <= high) {
         i = Math.floor((low + high) / 2);
-        newCompare = (new Date(captureTimes[i].replace(/-/g, "/").replace("UTC", ""))).getTime();
+        newCompare = sanitizedParseTimeEpoch(captureTimes[i]);
         if (newCompare < sanitized_timeToFind) {
           low = i + 1;
           continue;
@@ -3345,26 +3897,212 @@ if (!window['$']) {
         // Exact match
         return i;
       }
+      if (exactOnly) {
+        return -1;
+      }
       if (low >= captureTimes.length)
         return (captureTimes.length - 1);
       if (high < 0)
         return 0;
-      // No exact match. Now find the closest and alter direction if requested by user
-      var lowCompare = Date.parse(new Date(captureTimes[low].replace(/-/g, "/")));
-      var highCompare = Date.parse(new Date(captureTimes[high].replace(/-/g, "/")));
-      var timeToFindCompare = Date.parse(captureTimes[low].replace(/-/g, "/").substr(0, 11) + sanitized_timeToFind);
-      if (Math.abs(lowCompare - timeToFindCompare) > Math.abs(highCompare - timeToFindCompare)) {
-        i = (direction === "up") ? low : high;
+      // No exact match. Return lower or upper bound if 'down' or 'up' is selected
+      if (direction === 'down') return Math.min(low, high);
+      if (direction === 'up') return Math.max(low, high);
+      // Otherwise, select closest
+      var lowCompare = sanitizedParseTimeEpoch(captureTimes[low]);
+      var highCompare = sanitizedParseTimeEpoch(captureTimes[high]);
+      if (Math.abs(lowCompare - sanitized_timeToFind) > Math.abs(highCompare - sanitized_timeToFind)) {
+        return high;
       } else {
-        i = (direction === "down") ? high : low;
+        return low;
       }
-      return i;
     };
     this.findExactOrClosestCaptureTime = findExactOrClosestCaptureTime;
 
-    var loadVideoSetCallback = function(data) {
-      datasetJSON = data;
+    var sanitizedParseTimeEpoch = function(time) {
+      if (!time) {
+        return -1;
+      }
 
+      // Ensure time is a string
+      time = String(time);
+
+      // Remove milliseconds "Thu Apr 09 2015, 08:52:35.000" (FireFox/IE)
+      time = time.replace(/(\d\d)\.\d+/, '$1');
+
+      // Remove leading and trailing whitespace
+      time = time.replace(/^\s+|\s+$/g, '');
+
+      // If timezone
+      var timeZoneMatch = time.match(/\s+(GMT[-+]\d+|UTC).*|(\s+\D+\/\D+)$/);
+      var hasTimeZoneInfo = false;
+      if (timeZoneMatch) {
+        hasTimeZoneInfo = true;
+        // Remove timezone
+        time = time.slice(0, timeZoneMatch.index);
+      }
+
+      // If form HH:MM or HH:MM:SS, add full date from capture array
+      if (time.match(/^\d\d:\d\d(:\d\d)?\s*(PM|AM)?$/)) {
+        var lastCapture = new Date(sanitizedParseTimeEpoch(captureTimes[Math.max(0, frames - 1)]));
+        time = lastCapture.getFullYear() + "-" + (1e2 + (lastCapture.getMonth() + 1) + '').substr(1) + "-" + (1e2 + (lastCapture.getDate()) + '').substr(1) + " " + time;
+      }
+
+      // Handle case where we include time zone info or our capture times are assumed to be local but it is not indicated as such.
+      if (hasTimeZoneInfo || time.match(/\d\d:\d\d(:\d\d)?\s*(PM|AM)?$/)) {
+        // Firefox (and maybe others) needs to have the date use slashes if we are appending a time zone string.
+        time = time.replace(/-/g,"\/");
+        // Proceed if timezone is in a format that Date.parse understands (e.g. UTC or GMT-0400)
+        if (hasTimeZoneInfo && timeZoneMatch[1]) {
+          time += " " + timeZoneMatch[1];
+        } else {
+          // Otherwise either we don't have a timezone or our timezone is in a format not supported by Date.parse (e.g. America/New_York)
+          // Assume local system timezone in this case.
+          time += " " + new Date(time).toString().match(/([A-Z]+[\+-][0-9]+.*)/)[1];
+        }
+      }
+
+      // ISO 8601 expanded representation requires dates in calendar years outside the range [0000] till [9999] to have two leading zeros.
+      // A negative sign indicates BC and a positive indcates AD. Technically the positive sign can be omitted.
+      if (time < 0) {
+        time = "-" + UTIL.padLeft(time.substr(1), 6);
+      } else if (time > 9999) {
+        time = "+" + UTIL.padLeft(time.replace("+", ""), 6);
+      } else if (time.length < 4) {
+        // If this is true, then we only have a year as a date string and we need to ensure it at least 4 characters long (ISO 8601), so pad left if necessary.
+        time = UTIL.padLeft(time, 4);
+      }
+      var epoch = (new Date(time)).getTime();
+      if (epoch != 0 && (!epoch || isNaN(epoch))) {
+        return -1;
+      }
+      return epoch;
+    };
+    this.sanitizedParseTimeEpoch = sanitizedParseTimeEpoch;
+
+    var playbackTimeFromDate = function(time) {
+      var b = findExactOrClosestCaptureTime(time, 'down');
+      var e = findExactOrClosestCaptureTime(time, 'up');
+      var frameno;
+      if (b == e) {
+        frameno = b;
+      } else {
+        var b_epoch = getFrameEpochTime(b);
+        var e_epoch = getFrameEpochTime(e);
+        var time_epoch = sanitizedParseTimeEpoch(time);
+        if (Math.abs(b_epoch - e_epoch) < 1e-10) {
+          frameno = b;
+        } else {
+          frameno = b + (time_epoch - b_epoch) / (e_epoch - b_epoch);
+        }
+      }
+      return frameno / _getFps();
+    };
+    this.playbackTimeFromDate = playbackTimeFromDate;
+
+    // t= bt= et= from share should be of form
+    // Note that: (+-YY) is for ISO 8601 extended set (i.e. years less/more than 4 digits
+    // (+-YY)YYYYMMDD
+    // (+-YY)YYYYMMDDHHMMSS
+    //
+    // This function also supports old-style share link time in units of seconds in playback time
+    // Note: A share date comes in as UTC if it includes HH(MM:SS)
+    var playbackTimeFromShareDate = function(sharedate) {
+      sharedate = String(sharedate);
+      var sharedateAsFloat = parseFloat(sharedate);
+      if (isNaN(sharedateAsFloat) || sharedateAsFloat == -1) {
+        return 0;
+      }
+      // Might be an old-style # of seconds
+      // We still support this old-style, but we also now support dates less than the year 1000 (the previous cuttoff for assuming old style).
+      // The old-style is actually fractional, so we take advantage of that.
+      // One edge case is the year 0. This could mean an old-style of 0 (or 0.0) seconds or the actual year 0. If it is the year, it will be passed in
+      // as "0000", which is converted to 0 by parseFloat. So we check for that difference in string length.
+      if (sharedateAsFloat % 1 !== 0 || (sharedateAsFloat == 0 && sharedate.length <= 3)) {
+        UTIL.log('DEPRECATED: Old-style share link using playback seconds: "' + sharedate + '"', 2);
+        return sharedateAsFloat;
+      }
+      var parsed;
+      var extendedYearOffset = 0;
+      if (sharedate.match(/^[-+]\d{6}/)) {
+        // Extended years < 0 or > 9999 are 6 digits and preceded with a - OR + respectively
+        extendedYearOffset = 3;
+      }
+      if (sharedate.length == 8+extendedYearOffset && sharedate.match(/^[-+]*\d+$/)) {
+        parsed = sharedate.substr(0, 4+extendedYearOffset) + '-' + sharedate.substr(4+extendedYearOffset, 2) + '-' + sharedate.substr(6+extendedYearOffset, 2);
+      } else if (sharedate.length == 8+extendedYearOffset+6 && sharedate.match(/^[-+]*\d+$/)) {
+        parsed = sharedate.substr(0, 4+extendedYearOffset) + '-' + sharedate.substr(4+extendedYearOffset, 2) + '-' + sharedate.substr(6+extendedYearOffset, 2) + ' ' +
+        sharedate.substr(8+extendedYearOffset, 2) + ':' + sharedate.substr(10+extendedYearOffset, 2) + ':' + sharedate.substr(12+extendedYearOffset, 2) + " UTC";
+      } else {
+        // Error parsing;  return beginning of playback
+        UTIL.log('Error parsing share date ' + sharedate + '; returning playbackTime = 0');
+        return 0;
+      }
+      return playbackTimeFromDate(parsed);
+    };
+    this.playbackTimeFromShareDate = playbackTimeFromShareDate;
+
+    var shareDateFromFrame = function(frame, isStartOfFrame) {
+      // Assumes capture times are of the forms (YYYY[/-]MM[/-]DD HH:MM:SS), with time precision varying (i.e. no HH:MM:SS, etc)
+      var frameCaptureTime = thisObj.getCaptureTimes()[frame];
+      if (!frameCaptureTime) {
+        return 0;
+      }
+      // Get the number of digits of the capture time year.
+      // If the first encountered '-' is at the start, remove it to ensure we don't split on it.
+      // We could handle the split with a negative regex lookbehind, but not all browsers support that yet.
+      if (frameCaptureTime.indexOf("-") == 0) {
+        frameCaptureTime.replace("-", "");
+      }
+      // Split on the typical year,month,day separator (- or /) and replace a '+' if it exists (i.e. an extended date past the year 9999)
+      var frameYearDigitLength = frameCaptureTime.split(/[-/]+/)[0].replace("+","").length;
+      var frameCaptureTimeStripped = frameCaptureTime.replace(/[-+/:. a-zA-Z]/g, "");
+      var frameEpochTime = thisObj.getFrameEpochTime(frame);
+      var sliceEndIndex = frameCaptureTimeStripped.length;
+      var isExtendedYear = false;
+      if (frameCaptureTime.match(/^[+-]/) || frameYearDigitLength > 4) {
+        // Extended years are six digits
+        sliceEndIndex += Math.max((6 - frameYearDigitLength), 0);
+        isExtendedYear = true;
+      }
+      if (frameEpochTime != -1) {
+        var frameEpochTimeAsIsoString = new Date(frameEpochTime).toISOString();
+        var dateDigitString = frameEpochTimeAsIsoString.replace(/[-+/:. a-zA-Z]/g, "").slice(0, sliceEndIndex);
+        // We assume only a year is being shown if the date is 4 characters OR is an expanded set with leading double zeros
+        if (dateDigitString.length == 4 || (dateDigitString.length == 6 && isExtendedYear)) {
+          if (isStartOfFrame) {
+            dateDigitString += "0101";
+          } else {
+            dateDigitString += "1231";
+          }
+        }
+        if (isExtendedYear) {
+          if (frameEpochTimeAsIsoString.indexOf("-") == 0) {
+            dateDigitString = "-" + dateDigitString;
+          } else if (frameEpochTimeAsIsoString.indexOf("+") == 0) {
+            dateDigitString = "+" + dateDigitString;
+          }
+        }
+        return dateDigitString;
+      } else {
+        return timelapse.frameNumberToTime(frame);
+      }
+    };
+    this.shareDateFromFrame = shareDateFromFrame;
+
+    var getFrameEpochTime = function(frame) {
+      var frameCaptureTime = captureTimes[frame];
+      // Check for edge case of datasets not based on time
+      if (parseFloat(frameCaptureTime) % 1 !== 0 || parseFloat(captureTimes[captureTimes.length - 1]) % 1 !== 0) {
+        return -1;
+      }
+      return sanitizedParseTimeEpoch(frameCaptureTime);
+    };
+    this.getFrameEpochTime = getFrameEpochTime;
+
+    var loadVideoSetCallback = function(data) {
+      if (data) {
+        datasetJSON = data;
+      }
       // We are loading a new timelapse and in order for code that should only be run when the
       // first video of a timelapse is displayed, we need to reset the firstVideoId to the next
       // id that the videoset class will use. See _makeVideoVisibleListener() where we check for
@@ -3382,16 +4120,17 @@ if (!window['$']) {
       if (didFirstTimeOnLoad) {
         // Reset home view
         computeHomeView();
-
         setInitialView();
-
-        if (!view)
+        if (!view) {
           view = $.extend({}, homeView);
+        }
         _warpTo(view);
-        timelapseCurrentCaptureTimeIndex = Math.min(frames - 1, Math.floor(videoset.getCurrentTime() * _getFps()));
       } else {
         initializeUI();
         setupTimelapse();
+        if (playOnLoad) {
+          thisObj.play();
+        }
       }
 
       if (visualizer) {
@@ -3400,6 +4139,59 @@ if (!window['$']) {
         leader = videoset.getLeader();
         visualizer.loadContextMap();
         panoVideo = visualizer.clonePanoVideo(topLevelVideo);
+      }
+
+      // We use a short, probably unnecessary, timeout to let previous loading settle down before moving on to other things.
+      setTimeout(function() {
+        if (desiredInitialDate) {
+          initialTime = findExactOrClosestCaptureTime(String(desiredInitialDate)) / _getFps();
+          desiredInitialDate = null;
+        }
+
+        if (initialTime == 0) {
+          // Seek half a frame in to work around browser issues where seeking to zero doesn't properly fire events.
+          initialTime = 1 / _getFps() / 2;
+        }
+
+        timelapseCurrentTimeInSeconds = initialTime;
+        timelapseCurrentCaptureTimeIndex = Math.min(frames - 1, Math.floor(timelapseCurrentTimeInSeconds * _getFps()));
+
+        if (didFirstTimeOnLoad) {
+          // Reset timeline slider.
+          if (customUI) {
+            customUI.resetCustomTimeline();
+          } else {
+            defaultUI.resetTimelineSlider();
+          }
+        } else {
+          didFirstTimeOnLoad = true;
+          loadSharedDataFromUnsafeURL(UTIL.getUnsafeHashString());
+          // Fire the first time the page is loaded.
+          if (typeof(settings["onTimeMachinePlayerReady"]) === "function") {
+            settings["onTimeMachinePlayerReady"](timeMachineDivId, thisObj);
+          }
+        }
+
+        _seek(timelapseCurrentTimeInSeconds);
+
+        // There is no _makeVideoVisibleListener callback for webgl, so we have to do this here.
+        // TODO: webglVideoTile should tell us more about ready status besides initial metadata loading.
+        if (viewerType == "webgl") {
+          handleDatasetFirstVideoVisible(firstVideoId);
+        }
+      }, 50);
+    };
+
+    var handleDatasetFirstVideoVisible = function(videoId) {
+      // This is the first video of the dataset being displayed
+      if (videoId == firstVideoId) {
+        hideSpinner(viewerDivId);
+        if (typeof(onNewTimelapseLoadCompleteCallBack) === "function") {
+          onNewTimelapseLoadCompleteCallBack();
+        }
+        for (var i = 0; i < datasetLoadedListeners.length; i++) {
+          datasetLoadedListeners[i]();
+        }
       }
     };
 
@@ -3410,6 +4202,12 @@ if (!window['$']) {
 
       // Hide the UI because it is not ready yet
       $viewerDiv.css("visibility", "hidden");
+
+      if (isMobileDevice) {
+        $("#" + timeMachineDivId + ", #" + viewerDivId).addClass("mobileUI");
+      } else if (uiType == "materialUI") {
+        $("#" + timeMachineDivId + ", #" + viewerDivId).addClass("materialUI");
+      }
 
       var tmp = document.getElementById("{REPLACE}");
       $(tmp).attr("id", timeMachineDivId + "_timelapse");
@@ -3437,12 +4235,22 @@ if (!window['$']) {
         canvas = document.createElement('canvas');
         canvas.id = videoDivId + "_canvas";
         videoDiv.appendChild(canvas);
-        blackFrameDetectionCanvas = document.createElement('canvas');
-        blackFrameDetectionCanvas.id = videoDivId + "_canvas_blackFrameDetection";
-        blackFrameDetectionCanvas.style.display = "none";
-        if (blackFrameDetection)
+        var blackFrameDetectionCanvasId;
+        if (blackFrameDetection) {
+          blackFrameDetectionCanvas = document.createElement('canvas');
+          blackFrameDetectionCanvas.id = videoDivId + "_canvas_blackFrameDetection";
+          blackFrameDetectionCanvasId = blackFrameDetectionCanvas.id;
+          blackFrameDetectionCanvas.style.display = "none";
           videoDiv.appendChild(blackFrameDetectionCanvas);
-        videoset = new org.gigapan.timelapse.Videoset(viewerDivId, videoDivId, thisObj, canvas.id, blackFrameDetectionCanvas.id);
+        }
+        if (viewerType == "webgl") {
+          // Note: The "experimental" prefix is not necessary these day and is synonymous with the non-prefix.
+          // That said, as of Jan 2017 Edge still required this prefix. Whether this is still the case should
+          // be investigated.
+          gl = canvas.getContext('experimental-webgl');
+          glb = new Glb(gl);
+        }
+        videoset = new org.gigapan.timelapse.Videoset(viewerDivId, videoDivId, thisObj, canvas.id, blackFrameDetectionCanvasId);
       }
 
       // Setup viewport event handlers.
@@ -3454,7 +4262,7 @@ if (!window['$']) {
       // In addition, scrolling breaks horribly for Opera <= 12 when this is enabled.
       $.event.special.mousewheel.settings.adjustOldDeltas = false;
 
-      if (hasTouchSupport) {
+      if (hasTouchSupport || hasPointerSupport) {
         document.addEventListener("touchstart", touch2Mouse, {capture: true, passive: false});
         document.addEventListener("touchmove", touch2Mouse, {capture: true, passive: false});
         document.addEventListener("touchend", touch2Mouse, {capture: true, passive: false});
@@ -3474,6 +4282,9 @@ if (!window['$']) {
       // So we have a choice: Do multiple paths in the css file, getting a 404 in Chrome for invalid relative paths OR we do the style in the document itself,
       // which in any browser will reslove relative paths correctly. We choose the latter to keep the message console clean.
       $('<style type="text/css">.closedHand {cursor: url("' + rootAppURL + 'css/cursors/closedhand.cur"), move !important;} .openHand {cursor: url("' + rootAppURL + 'css/cursors/openhand.cur"), move !important;} .tiledContentHolder {cursor: url("' + rootAppURL + 'css/cursors/openhand.cur"), move;}</style>').appendTo($('head'));
+
+      $shareViewWaypointIndexCheckbox = $("#" + viewerDivId + " .waypoint-index");
+      $shareViewWaypointOnlyCheckbox = $("#" + viewerDivId + " .waypoint-only");
 
       loadTimelapse(settings["url"], settings["initialView"], settings["initialTime"]);
     }
@@ -3512,31 +4323,32 @@ if (!window['$']) {
 
     var showSpinner = function(viewerDivId) {
       UTIL.log("showSpinner");
+      isSpinnerShowing = true;
       $("#" + viewerDivId + " .spinnerOverlay").show();
     };
     this.showSpinner = showSpinner;
 
     var hideSpinner = function(viewerDivId) {
       UTIL.log("hideSpinner");
+      isSpinnerShowing = false;
       $("#" + viewerDivId + " .spinnerOverlay").hide();
     };
     this.hideSpinner = hideSpinner;
+
+    var isLoading = function() {
+      return $("#" + viewerDivId + " .spinnerOverlay").is(":visible");
+    };
+    this.isLoading = isLoading;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // Constructor code
     //
 
-    // TODO: This is because of goofy user agent for Google hyperwall
-    if (settings["viewerType"] == "webgl") {
-      UTIL.setMediaType(settings["mediaType"]);
-      browserSupported = true;
-    } else {
-      browserSupported = UTIL.browserSupported(settings["mediaType"]);
-    }
+    browserSupported = UTIL.browserSupported(settings["mediaType"]);
 
     if (!browserSupported) {
-      UTIL.ajax("html", rootAppURL, "templates/browser_not_supported_template.html", function(html) {
+      UTIL.ajax("html", rootAppURL, "templates/" + browserNotSupportedTemplateName, function(html) {
         $("#" + timeMachineDivId).html(html);
       });
       return;
@@ -3547,7 +4359,12 @@ if (!window['$']) {
     if (settings["viewerType"])
       UTIL.setViewerType(settings["viewerType"]);
 
-    viewerType = UTIL.getViewerType();
+    viewerType = UTIL.getViewerType(settings);
+    // Taking retina screen into account for webgl is quite the performance hit, even on very high end machines.
+    // Ignore pixel ratio for now.
+    if (viewerType == "webgl") {
+      pixelRatio = 1;
+    }
 
     // Set default loop dwell time
     // TODO: This should probably be set not just for landsat, but for all short datasets.
@@ -3562,6 +4379,11 @@ if (!window['$']) {
     }
 
     UTIL.log('Timelapse("' + settings["url"] + '")');
-    UTIL.ajax("html", rootAppURL, "templates/player_template.html", loadPlayerControlsTemplate);
+    if (isMobileDevice) {
+      UTIL.ajax("html", rootAppURL, "templates/mobile_player_template.html", loadPlayerControlsTemplate);
+    } else {
+      UTIL.ajax("html", rootAppURL, "templates/player_template.html", loadPlayerControlsTemplate);
+    }
+
   };
 })();

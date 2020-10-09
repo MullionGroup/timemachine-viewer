@@ -1,62 +1,65 @@
-// @license
-// Redistribution and use in source and binary forms ...
+/**
+ * @license
+ * Redistribution and use in source and binary forms ...
+ *
+ * Class for managing timelapse videosets.
+ *
+ * Supports the following events to which listeners can subscribe.  Event handlers are called with the arguments listed
+ * in parentheses:
+ *  video-added (videoId, time)
+ *  video-loaded-metadata (videoId, time)
+ *  video-made-visible (videoId, time)
+ *  video-deleted (video.id, currentTime, videoWhichCausedTheDelete)
+ *   NOTE: the videoWhichCausedTheDelete parameter may be null
+ *  video-garbage-collected (videoId, time)
+ *  stall-status-change (isStalled)
+ *  sync (currentTime)
+ *  video-seeked
+ *
+ * Dependencies:
+ *  org.gigapan.Util
+ *  jQuery (http://jquery.com/)
+ *
+ * Copyright 2011 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Carnegie Mellon University.
+ *
+ * Authors:
+ * Chris Bartley (bartley@cmu.edu)
+ * Paul Dille (pdille@andrew.cmu.edu)
+ * Randy Sargent (randy.sargent@cs.cmu.edu)
+ *
+ */
 
-// Class for managing timelapse videosets.
-//
-// Supports the following events to which listeners can subscribe.  Event handlers are called with the arguments listed
-// in parentheses:
-// * video-added (videoId, time)
-// * video-loaded-metadata (videoId, time)
-// * video-made-visible (videoId, time)
-// * video-deleted (video.id, currentTime, videoWhichCausedTheDelete)
-//   NOTE: the videoWhichCausedTheDelete parameter may be null
-// * video-garbage-collected (videoId, time)
-// * stall-status-change (isStalled)
-// * sync (currentTime)
-// * video-seeked
-//
-// Dependencies:
-// * org.gigapan.Util
-// * jQuery (http://jquery.com/)
-//
-// Copyright 2011 Carnegie Mellon University. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without modification, are
-// permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this list of
-//    conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list
-//    of conditions and the following disclaimer in the documentation and/or other materials
-//    provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-// FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-// ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// The views and conclusions contained in the software and documentation are those of the
-// authors and should not be interpreted as representing official policies, either expressed
-// or implied, of Carnegie Mellon University.
-//
-// Authors:
-// Chris Bartley (bartley@cmu.edu)
-// Paul Dille (pdille@andrew.cmu.edu)
-// Randy Sargent (randy.sargent@cs.cmu.edu)
+"use strict";
 
 //
 // VERIFY NAMESPACE
 //
+
 // Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
-
-"use strict";
-
 var org;
 if (!org) {
   org = {};
@@ -138,6 +141,10 @@ if (!window['$']) {
     var inactiveVideos = {};
     var currentlyShownVideo = null;
     var playbackRate = 1;
+    // This min/max playback rate is specified by Chrome/FireFox and clamping to it has
+    // become a requirement with latest browser updates or we suffer video playback glitches/errors thrown.
+    var minPlaybackRate = 0.0625;
+    var maxPlaybackRate = 16.0;
     var id = 0;
     var fps = 25;
     var isSplitVideo = false;
@@ -173,8 +180,10 @@ if (!window['$']) {
     var isIEEdge = UTIL.isIEEdge();
     var isOperaLegacy = UTIL.isOperaLegacy();
     var isChrome = UTIL.isChrome();
+    var isChromeOS = UTIL.isChromeOS();
     var isSafari = UTIL.isSafari();
     var isFirefox = UTIL.isFirefox();
+    var isMobileSupported = UTIL.isMobileSupported();
     //var doChromeSeekableHack = timelapse.doChromeSeekableHack();
     //var doChromeBufferedHack = timelapse.doChromeBufferedHack();
     var doChromeCacheBreaker = timelapse.doChromeCacheBreaker();
@@ -190,6 +199,14 @@ if (!window['$']) {
     //
     // Public methods
     //
+    this.getCanvasContext = function() {
+      return canvasContext;
+    };
+
+    this.getCanvas = function() {
+      return canvas;
+    };
+
     this.getCurrentVideoId = function() {
       return id;
     };
@@ -326,6 +343,16 @@ if (!window['$']) {
       video.id = currentVideoId;
       video.active = true;
       video.ready = false;
+      video.muted = true;
+      video.disableRemotePlayback = true;
+      if (isMobileSupported) {
+        video.autoplay = true;
+      }
+      video.playsinline = true;
+      // The attribute should be all lowercase per the Apple docs, but apparently it needs to be camelcase.
+      // Leaving both in just in case.
+      video.playsInline = true;
+      video.crossOrigin = "anonymous";
 
       // Add methods getCurrentTime() and setCurrentTime() to the video.  We MUST use these methods instead of accessing
       // the currentTime property directly so that we can abstract away the time offset calculations required for split
@@ -376,7 +403,7 @@ if (!window['$']) {
           // The src may be a relative path. When we later call video.src we always get an absolute path,
           // so we need to ensure that we always store absolute paths.
           if (src.substring(0, 2) == "./" || src.substring(0, 3) == "../") {
-            src = UTIL.relativeToAbsolutePath(src);
+            src = UTIL.relUrlToAbsUrlLegacy(src);
           }
           if (activeVideoSrcList[src]) {
             UTIL.log("Video found in local storage, adding cache breaker: " + src);
@@ -389,9 +416,10 @@ if (!window['$']) {
         UTIL.error("User has disabled local file storage of cookies: " + e);
       }
       //UTIL.log(getVideoSummaryAsString(video));
-      if (video.src == '')
+      if (video.src == '' && UTIL.doDraw()) {
         video.setAttribute('src', src);
-      //UTIL.log("set src successfully");
+        //UTIL.log("set src successfully");
+      }
       if (areNativeVideoControlsVisible) {
         video.setAttribute('controls', true);
       }
@@ -400,7 +428,7 @@ if (!window['$']) {
         video.geometry = {};
       }
       _repositionVideo(video, geometry);
-      video.defaultPlaybackRate = video.playbackRate = playbackRate;
+      video.defaultPlaybackRate = video.playbackRate = _clampToValidPlaybackRate(playbackRate);
       if (viewerType == "video") {
         video.style.position = 'absolute';
         video.style.display = 'inline';
@@ -419,7 +447,8 @@ if (!window['$']) {
 
       _deleteUnneededVideos();
 
-      if (isIEEdge || isOperaLegacy) {
+      // TODO: Check if still needed for Edge
+      if (isIEEdge || isOperaLegacy || isChromeOS) {
         // Videos in Opera <= 12 and IE Edge often seem to get stuck in a state of always seeking.
         // This will ensure that if we are stuck, we reload the video.
         video.addEventListener('seeking', videoSeeking, false);
@@ -463,10 +492,27 @@ if (!window['$']) {
 
       mostRecentlyAddedVideo = video;
 
+      // TODO: 20190418
+      /*if (isMobileSupported) {
+        $("#" + currentVideoId).one('loadedmetadata', function() {
+          if (video.readyState == 1) {
+            _handleVideoPromise(video, "load");
+            if (_isPaused()) {
+              if (!video.playPromise) {
+                _handleVideoPromise(video, "play");
+              }
+              setTimeout(function() {
+                _handleVideoPromise(video, "pause");
+              }, 1);
+            }
+          }
+        });
+      }*/
+
       if (viewerType != "video") {
         video.addEventListener('playing', function() {
           if (video.handleSeekStuck && !advancing) {
-            video.pause();
+            _handleVideoPromise(video, "pause");
             video.handleSeekStuck = null;
           }
           if (video.drawIntervalId == null)
@@ -490,6 +536,17 @@ if (!window['$']) {
           clearInterval(video.drawIntervalId);
           video.drawIntervalId = null;
         }, false);
+      }
+      if (isMobileSupported) {
+        _handleVideoPromise(video, "load");
+        if (_isPaused()) {
+          if (!video.playPromise) {
+            _handleVideoPromise(video, "play");
+          }
+          setTimeout(function() {
+            _handleVideoPromise(video, "pause");
+          }, 1);
+        }
       }
       return video;
     };
@@ -540,6 +597,7 @@ if (!window['$']) {
     this.repositionVideo = _repositionVideo;
 
     var stopStreaming = function(video) {
+      _handleVideoPromise(video, "pause");
       try {
         if (isChrome && doChromeCacheBreaker) {
           delete activeVideoSrcList[video.src];
@@ -550,6 +608,8 @@ if (!window['$']) {
         UTIL.error("User has disabled local file storage of cookies: " + e);
       }
       video.src = "";
+      //window.clearInterval(video.clearStreamInterval);
+      //video.clearStreamInterval = window.setInterval(_handleVideoPromise(video, "delete"), 50);
     };
 
     var clearOutVideoLocalStore = function(checkTimestamps) {
@@ -620,7 +680,7 @@ if (!window['$']) {
       video.ready = false;
       video.setCurrentTime = null;
       try {
-        video.pause();
+        _handleVideoPromise(video, "pause");
       } catch(e) {
         UTIL.error(e.name + " while pausing " + video + " in deleteVideo(). Most likely you are running IE 9.");
       }
@@ -676,7 +736,10 @@ if (!window['$']) {
 
         for (videoId in activeVideos) {
           UTIL.log("video(" + videoId + ") play");
-          activeVideos[videoId].play();
+          var activeVideo = activeVideos[videoId];
+          if (!activeVideo.playPromise) {
+            _handleVideoPromise(activeVideo, "play");
+          }
         }
       } else if (advancing && (paused || stalled)) {
         //UTIL.log("stop advance");
@@ -688,7 +751,7 @@ if (!window['$']) {
         for (videoId in activeVideos) {
           UTIL.log("video(" + videoId + ") pause");
           try {
-            activeVideos[videoId].pause();
+            _handleVideoPromise(activeVideos[videoId], "pause");
           } catch(e) {
             UTIL.error(e.name + " while pausing " + activeVideos[videoId] + " in updateVideoAdvance(). Most likely you are running IE 9.");
           }
@@ -696,6 +759,35 @@ if (!window['$']) {
         _seek(time);
       } else {
         UTIL.log("advance = " + !(paused || stalled));
+      }
+    };
+
+    var _handleVideoPromise = function(video, actionType) {
+      if (!video) return;
+      if (actionType == "play" && video.paused) {
+        video.playPromise = video.play();
+      }
+      // HTML5 video does not return Promises in <= IE 11, so we create a fake one.
+      // Also note that <= IE11 does not support Promises, so we need to include a polyfill.
+      if (isIE && !isIEEdge) {
+        video.playPromise = Promise.resolve(true);
+      }
+      if (video.playPromise !== undefined) {
+        video.playPromise.then(function (_) {
+          if (actionType == "pause" && !video.paused) {
+            video.pause();
+          } else if (actionType == "load") {
+            video.load();
+          }/* else if (actionType == "delete") {
+            video.src = "";
+            window.clearInterval(video.clearStreamInterval);
+          }*/
+          if (actionType != "play") {
+            video.playPromise = undefined;
+          }
+        }).catch(function (error) {
+          //UTIL.error(error);
+        });
       }
     };
 
@@ -768,11 +860,10 @@ if (!window['$']) {
       if (isChrome)
         return 0.0 <= rate;
       // Safari *can* go faster than 2x, but playback becomes choppy
-      // Safari *can* go slower than 0.5x, but when playing back (even emulated) at that rate and a new video is brought in, playback gets stuck
-      // Safari *can* go slower than -2x, but playback becomes questionable and sometimes stops entirely
+      // Safari *can* go slower than -2x (backwards), but playback becomes questionable and sometimes stops entirely.
       if (isSafari)
-        return 0.0 == rate || (0.5 <= Math.abs(rate) && Math.abs(rate) <= 2.0);
-      // Opera <= 12 does not support rates slower than 1x
+        return 0.0 <= rate && rate <= 2.0;
+      // Opera <= v12 does not support rates slower than 1x
       if (isOperaLegacy)
         return 0.0 == rate || 1.0 <= rate;
       // Firefox bounds rates to be between 0.25x and 5x
@@ -785,10 +876,11 @@ if (!window['$']) {
       return true;
     };
 
-    this.setPlaybackRate = function(rate) {
-      if (isSafari && rate > 0 && rate <= 0.25)
-        rate = 0.5;
+    var _clampToValidPlaybackRate = function(rate) {
+      return Math.min(Math.max(rate, minPlaybackRate), maxPlaybackRate);
+    };
 
+    this.setPlaybackRate = function(rate) {
       if (rate != playbackRate) {
         var t = _getCurrentTime();
         playbackRate = rate;
@@ -797,7 +889,7 @@ if (!window['$']) {
         var videoRate = emulatingPlaybackRate ? 0 : rate;
         UTIL.log("*** SETTING VIDEO PLAYBACK RATE TO " + videoRate);
         for (var videoId in activeVideos) {
-          activeVideos[videoId].defaultPlaybackRate = activeVideos[videoId].playbackRate = videoRate;
+          activeVideos[videoId].defaultPlaybackRate = activeVideos[videoId].playbackRate = _clampToValidPlaybackRate(videoRate);
         }
         _updateSyncInterval();
       }
@@ -882,7 +974,9 @@ if (!window['$']) {
 
       _setVideoToCurrentTime(video);
       if (advancing) {
-        video.play();
+        if (!video.playPromise) {
+          _handleVideoPromise(video, "play");
+        }
       }
     };
 
@@ -1049,6 +1143,12 @@ if (!window['$']) {
         drawToCanvas(video);
       }
 
+      if (_isPaused() && isMobileSupported) {
+        setTimeout(function() {
+          _setVideoToCurrentTime(video);
+        }, 250);
+      }
+
       // Delete all videos earlier than new visible video
 
       // Delete video which is being replaced, following the chain until we get to a null.  We do this in a timeout
@@ -1061,11 +1161,16 @@ if (!window['$']) {
     var videoSeeking = function(event) {
       window.clearInterval(videoIsSeekingIntervalCheck);
       videoIsSeekingIntervalCheck = window.setInterval(function() {
-        UTIL.error("We're still seeking after 250ms, so let's reload the video. This is an Opera <= 12 and IE Edge only workaround.");
-        event.target.load();
-        event.target.handleSeekStuck = true;
-        event.target.play();
-      }, 250);
+        UTIL.error("We're still seeking after 1000ms, so let's reload the video.");
+        for (var videoId in activeVideos) {
+          if (videoId != currentVideoId) {
+            stopStreaming(activeVideos[videoId]);
+          }
+        }
+        var activeVideo = activeVideos[currentVideoId];
+        if (!activeVideo || !activeVideo.seeking) return;
+        activeVideo.load();
+      }, 1000);
     };
 
     var videoSeeked = function(event) {
@@ -1171,13 +1276,20 @@ if (!window['$']) {
     };
 
     var stall = function(isVideo) {
-      if (isVideo === undefined)
+      if (isVideo === undefined) {
         isVideo = false;
+      }
+      if (!UTIL.doDraw()) {
+        window.clearTimeout(spinnerTimeoutId);
+        timelapse.hideSpinner(viewerDivId);
+        return;
+      }
       if (stalled && (videoStalled || !isVideo)) {
         return;
       }
-      if (!videoStalled)
+      if (!videoStalled) {
         videoStalled = isVideo;
+      }
       if (!stalled) {
         UTIL.log("Video stalling...");
         stalled = true;
@@ -1186,7 +1298,9 @@ if (!window['$']) {
         // this way.
         window.clearTimeout(spinnerTimeoutId);
         spinnerTimeoutId = window.setTimeout(function() {
-          timelapse.showSpinner(viewerDivId);
+          if (UTIL.doDraw()) {
+            timelapse.showSpinner(viewerDivId);
+          }
         }, 250);
         notifyStallEventListeners();
         _updateVideoAdvance();
@@ -1355,12 +1469,12 @@ if (!window['$']) {
               //perfTimeTweaks++;
               UTIL.log("video(" + videoId + ") time correction: tweaking from " + (video.getCurrentTime() - leader) + " to " + t + " (error=" + error + ", rate=" + rateTweak + ", state=" + video.readyState + ")");
               // Speed or slow video so that we'll be even by the next sync interval
-              video.playbackRate = playbackRate * rateTweak;
+              video.playbackRate = _clampToValidPlaybackRate(playbackRate * rateTweak);
             }
           }
         } else {
           if (video.playbackRate != playbackRate) {
-            video.playbackRate = playbackRate;
+            video.playbackRate = _clampToValidPlaybackRate(playbackRate);
           }
           if (!video.ready && video.readyState >= 3) {
             _makeVideoVisible(video, "sync");
@@ -1385,6 +1499,10 @@ if (!window['$']) {
 
     var drawToCanvas = function(video) {
       // DEBUG 4
+      if (!UTIL.doDraw()) {
+        canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
       if (video.active && video.ready && !video.seeking && video.readyState >= 2 && video.canDraw == true) {
         // Black frame detection
         var videoGeometry = video.geometry;
@@ -1422,7 +1540,7 @@ if (!window['$']) {
             canvasContext.clearRect(0, 0, canvas.width, canvas.height);
             canvasContext.drawImage(video, videoGeometry.left, videoGeometry.top, videoGeometry.width, videoGeometry.height);
           } catch(e) {
-            UTIL.error(e.message);
+            UTIL.error(e.name);
           }
         }
         // Notify draw listeners

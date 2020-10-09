@@ -1,48 +1,51 @@
-// @license
-// Redistribution and use in source and binary forms ...
-/*
- Class for managing the context map map for the timelapse.
+/**
+ * @license
+ * Redistribution and use in source and binary forms ...
+ *
+ * Class for managing the context map map for the timelapse.
+ *
+ * Dependencies:
+ *  org.gigapan.timelapse.Timelapse
+ *  jQuery (http://jquery.com/)
+ *  Leaflet (http://leafletjs.com/)
+ *
+ * Copyright 2013 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ * of conditions and the following disclaimer in the documentation and/or other materials
+ * provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those of the
+ * authors and should not be interpreted as representing official policies, either expressed
+ * or implied, of Carnegie Mellon University.
+ *
+ * Authors:
+ *  Paul Dille (pdille@cmucreatelab.org)
+ *  Yen-Chia Hsu (legenddolphin@gmail.com)
+ *
+ */
 
- Dependencies:
- * org.gigapan.timelapse.Timelapse
- * jQuery (http://jquery.com/)
- * Leaflet (http://leafletjs.com/)
-
- Copyright 2013 Carnegie Mellon University. All rights reserved.
-
- Redistribution and use in source and binary forms, with or without modification, are
- permitted provided that the following conditions are met:
-
- 1. Redistributions of source code must retain the above copyright notice, this list of
- conditions and the following disclaimer.
-
- 2. Redistributions in binary form must reproduce the above copyright notice, this list
- of conditions and the following disclaimer in the documentation and/or other materials
- provided with the distribution.
-
- THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ''AS IS'' AND ANY EXPRESS OR IMPLIED
- WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
- FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY OR
- CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
- The views and conclusions contained in the software and documentation are those of the
- authors and should not be interpreted as representing official policies, either expressed
- or implied, of Carnegie Mellon University.
-
- Authors:
- Paul Dille (pdille@cmucreatelab.org)
- Yen-Chia Hsu (legenddolphin@gmail.com)
-
- VERIFY NAMESPACE
-
- Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
-*/
 "use strict";
+
+//
+// VERIFY NAMESPACE
+//
 
 // Create the global symbol "org" if it doesn't exist.  Throw an error if it does exist but is not an object.
 var org;
@@ -123,6 +126,7 @@ if (!org.gigapan.timelapse.Timelapse) {
     var showToggleBtn = (typeof(contextMapOptions["showToggleBtn"]) == "undefined") ? true : contextMapOptions["showToggleBtn"];
     var tileType = (availableTileSources.indexOf(contextMapOptions["tileType"]) < 0) ? "Google" : contextMapOptions["tileType"];
     var apiKeys = (typeof (settings["apiKeys"]) == "undefined") ? {} : settings["apiKeys"];
+    var uiType = timelapse.getUIType();
 
     var mapResizeStart = {
       "x": undefined,
@@ -131,12 +135,10 @@ if (!org.gigapan.timelapse.Timelapse) {
     var mapGeometry = {
       "width": startWidth,
       "height": startHeight,
-      "right": 21,
+      "right": 74,
       "top": 21
     };
     var lastMapGeometry;
-    var contextMap;
-    var contextMapBox;
     var newestLocation = {
       "lat": undefined,
       "lng": undefined
@@ -150,10 +152,15 @@ if (!org.gigapan.timelapse.Timelapse) {
     var smallMapContainer_height;
     var smallMapResizer_width;
     var smallMapResizer_height;
-    var isMapMinimized = false;
+    var isMiniMapMinimized = false;
     var zoomOffset;
     var oldMapZoom;
-    var tileLayer;
+    var leafletTileLayer;
+    var googleMapsHybridLayer;
+    var customLayers = timelapse.getCustomLayers();
+    var materialUI = timelapse.getMaterialUI();
+    var isDefaultMiniMapLayer = true;
+
 
     // DOM elements
     var smallMapContainer;
@@ -162,6 +169,9 @@ if (!org.gigapan.timelapse.Timelapse) {
     var $smallMapResizer;
     var $smallMapContainer;
     var $smallMap;
+    var contextMap;
+    var contextMapBox;
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -185,13 +195,13 @@ if (!org.gigapan.timelapse.Timelapse) {
         mapResizeStart.x = nowX;
         mapGeometry.width += dx;
       }
-      setContextMapSize(mapGeometry.height, mapGeometry.width);
+      setMiniMapSize(mapGeometry.height, mapGeometry.width);
       // Force map redraw because of container resize
       contextMap.invalidateSize();
     };
 
     // Set context map size
-    var setContextMapSize = function(newHeight, newWidth, animate, onComplete, callBackOnComplete) {
+    var setMiniMapSize = function(newHeight, newWidth, animate, onComplete, callBackOnComplete) {
       if (animate) {
         $smallMapContainer.stop(true, true).animate({
           "height": newHeight + "px",
@@ -213,8 +223,9 @@ if (!org.gigapan.timelapse.Timelapse) {
     };
 
     // Load context map
-    var loadContextMap = function() {
+    var setupMiniMapForLeaflet = function() {
       var style;
+      var noLabelsStyle;
 
       if (tileType === "Google") {
         style = [{
@@ -257,7 +268,52 @@ if (!org.gigapan.timelapse.Timelapse) {
           }]
         }];
 
-        window.loadContextMapLeaflet = function() {
+        noLabelsStyle = [{
+          elementType: "labels",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "administrative",
+          elementType: "geometry",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "administrative.land_parcel",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "administrative.neighborhood",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "poi",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "road",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "road",
+          elementType: "labels.icon",
+          stylers: [{
+              visibility: "off"
+            }]
+        }, {
+          featureType: "transit",
+          stylers: [{
+              visibility: "off"
+            }]
+        }];
+
+        // Callback when google APIs are loaded
+        var googleMapForLeafletCallback = function() {
           var googleAPIScript;
           googleAPIScript = document.createElement('script');
           googleAPIScript.setAttribute('src', UTIL.getRootAppURL() + 'js/leaflet/Google.js');
@@ -265,32 +321,33 @@ if (!org.gigapan.timelapse.Timelapse) {
           document.getElementsByTagName('head')[0].appendChild(googleAPIScript);
           googleAPIScript.onload = function() {
             // Possible types: SATELLITE, ROADMAP, HYBRID, TERRAIN
-            tileLayer = new L.Google('ROADMAP', {
+            leafletTileLayer = new L.Google('ROADMAP', {
               mapOptions: {
                 styles: style
               }
             });
+            googleMapsHybridLayer = new L.Google('HYBRID', {
+              mapOptions: {
+                styles: noLabelsStyle
+              }
+            });
             loadContextMapCallback();
             // Create search box
-            if (defaultUI && showAddressLookup)
+            if (defaultUI && showAddressLookup) {
               defaultUI.createAddressLookupUI();
+            }
+            // TODO: Is this legacy support still needed? (is used for EarthTime)
             if (typeof (googleMapsLoadedCallback) === "function") {
               googleMapsLoadedCallback();
             }
           };
         };
-        var leafletScript = document.createElement('script');
-        var mapSrc = 'https://maps.google.com/maps/api/js?libraries=places&callback=loadContextMapLeaflet';
-        if (apiKeys["googleMaps"])
-          mapSrc += '&key=' + apiKeys["googleMaps"];
-        leafletScript.setAttribute('src', mapSrc);
-        leafletScript.setAttribute('type', 'text/javascript');
-        document.getElementsByTagName('head')[0].appendChild(leafletScript);
+        UTIL.loadGoogleAPIs(googleMapForLeafletCallback, apiKeys);
       } else if (tileType == "OpenStreetMap") {
         var osmUrl = contextMapOptions["tileUrl"] || 'http://{s}.tile.openstreetmap.org/';
         osmUrl += '/{z}/{x}/{y}.png';
         var osmAttrib = '<a href="http://openstreetmap.org">OpenStreetMap</a>';
-        tileLayer = new L.TileLayer(osmUrl, {
+        leafletTileLayer = new L.TileLayer(osmUrl, {
           attribution: osmAttrib
         });
         loadContextMapCallback();
@@ -301,21 +358,21 @@ if (!org.gigapan.timelapse.Timelapse) {
         document.getElementsByTagName('head')[0].appendChild(bingAPIScript);
         bingAPIScript.onload = function() {
           // Possible types: Aerial, AerialWithLabels, Birdseye, BirdseyeWithLabels, Road
-          tileLayer = new L.BingLayer("LfO3DMI9S6GnXD7d0WGs~bq2DRVkmIAzSOFdodzZLvw~Arx8dclDxmZA0Y38tHIJlJfnMbGq5GXeYmrGOUIbS2VLFzRKCK0Yv_bAl6oe-DOc", {
+          leafletTileLayer = new L.BingLayer("LfO3DMI9S6GnXD7d0WGs~bq2DRVkmIAzSOFdodzZLvw~Arx8dclDxmZA0Y38tHIJlJfnMbGq5GXeYmrGOUIbS2VLFzRKCK0Yv_bAl6oe-DOc", {
             type: "Road"
           });
           loadContextMapCallback();
         };
       } else if (tileType == "Custom") {
         var tileUrl = contextMapOptions["tileUrl"];
-        tileLayer = new L.TileLayer(tileUrl);
+        leafletTileLayer = new L.TileLayer(tileUrl);
         loadContextMapCallback();
       }
     };
 
     var loadContextMapCallback = function() {
       // Leaflet
-      contextMap = new L.Map(contextMapDivId + "_contextMap", {
+      var mapOptions = {
         center: [0, 0],
         zoom: 0,
         touchZoom: false,
@@ -325,9 +382,23 @@ if (!org.gigapan.timelapse.Timelapse) {
         keyboard: false,
         zoomControl: false,
         attributionControl: true
-      });
+      };
+
+      if (uiType == "materialUI") {
+        var materialUIOptions = {
+          dragging : false,
+          scrollWheelZoom: false,
+          tap: false,
+          touchZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false
+        };
+        $.extend(mapOptions, materialUIOptions);
+      }
+
+      contextMap = new L.Map(contextMapDivId + "_contextMap", mapOptions);
       contextMap.attributionControl.setPrefix("");
-      contextMap.addLayer(tileLayer);
+      contextMap.addLayer(leafletTileLayer);
 
       // Draw the rectangle bounding box on the map
       contextMapBox = L.rectangle([
@@ -340,44 +411,50 @@ if (!org.gigapan.timelapse.Timelapse) {
       contextMapBox.addTo(contextMap);
 
       // Add event listeners for the context map
-      $(smallMapContainer).mousewheel(function(event, delta) {
-        if (event.shiftKey) {
-          if (delta > 0) {
-            timelapse.zoomAbout(1 / 0.999, undefined, undefined, true);
-          } else if (delta < 0) {
-            timelapse.zoomAbout(0.999, undefined, undefined, true);
+      if (uiType != "materialUI" && !useTouchFriendlyUI) {
+        $smallMapContainer.mousewheel(function(event, delta) {
+          if (event.shiftKey) {
+            if (delta > 0) {
+              timelapse.zoomAbout(1 / 0.999, undefined, undefined, true);
+            } else if (delta < 0) {
+              timelapse.zoomAbout(0.999, undefined, undefined, true);
+            }
+          } else {
+            if (delta > 0) {
+              timelapse.zoomAbout(1 / 0.9, undefined, undefined, true);
+            } else if (delta < 0) {
+              timelapse.zoomAbout(0.9, undefined, undefined, true);
+            }
           }
-        } else {
-          if (delta > 0) {
-            timelapse.zoomAbout(1 / 0.9, undefined, undefined, true);
-          } else if (delta < 0) {
-            timelapse.zoomAbout(0.9, undefined, undefined, true);
-          }
-        }
-      }).dblclick(function(event) {
-        if (useTouchFriendlyUI) return;
-        event.stopPropagation();
-        var $target = $(event.target);
-        if ($target.hasClass("contextMapResizer") || $target.hasClass("togglecontextMapBtn"))
-          return;
-        timelapse.zoomAbout(2, undefined, undefined, true);
-      });
-      if (useTouchFriendlyUI) {
-        // Prevent the user from accidently tapping the logo/Terms of Use links on the context map.
-        $(smallMapContainer).click(function(event) {
-          event.preventDefault();
-          event.stopPropagation();
+        }).dblclick(function(event) {
+          var $target = $(event.target);
+          if ($target.hasClass("contextMapResizer") || $target.hasClass("togglecontextMapBtn"))
+            return;
+          timelapse.zoomAbout(2, undefined, undefined, true);
         });
-      } else {
         contextMap.on("drag", updateLocation);
-      }
-      contextMap.on("resize", function() {
-        contextMap.once('moveend', function(e) {
-          timelapse.updateLocationContextUI();
+      } else if (uiType == "materialUI") {
+        $smallMapContainer.addClass("cursorPointer");
+        $smallMapContainer.prop("title", "Click to enter Maps mode");
+        $smallMapContainer.on("dblclick mousedown", function(e) {
+          return false;
         });
-      });
+        $smallMapContainer.on("click", function(e) {
+          if (isDefaultMiniMapLayer) {
+            $smallMap.prop("title", "Click to enter Timelapse mode");
+            contextMap.addLayer(googleMapsHybridLayer);
+            contextMap.removeLayer(leafletTileLayer);
+          } else {
+            $smallMap.prop("title", "Click to enter Maps mode");
+            contextMap.addLayer(leafletTileLayer);
+            contextMap.removeLayer(googleMapsHybridLayer);
+          }
+          isDefaultMiniMapLayer = !isDefaultMiniMapLayer;
+          customLayers.toggleGoogleMapLayer(materialUI.handleContextMapUICallback);
+        });
+      }
       // Create resizer
-      if (resizable && !isHyperwall) {
+      if (resizable && !isHyperwall && uiType != "materialUI") {
         smallMapResizer = document.createElement("div");
         $smallMapResizer = $(smallMapResizer);
         $smallMapResizer.addClass("contextMapResizer");
@@ -398,12 +475,17 @@ if (!org.gigapan.timelapse.Timelapse) {
           $("body").bind("mouseleave", addContextMapMouseupEvents);
           UTIL.addGoogleAnalyticEvent('button', 'click', 'viewer-resize-context-map');
         }, false);
+        contextMap.on("resize", function() {
+          contextMap.once('moveend', function(e) {
+            timelapse.updateLocationContextUI();
+          });
+        });
       }
       // Create toggle button
-      if (showToggleBtn && !isHyperwall) {
+      if (showToggleBtn && !isHyperwall && uiType != "materialUI") {
         var toggleIconClose = useTouchFriendlyUI ? "ui-icon-custom-arrowthick-1-ne" : "ui-icon-arrowthick-1-ne";
         var toggleIconOpen = useTouchFriendlyUI ? "ui-icon-custom-arrowthick-1-sw" : "ui-icon-arrowthick-1-sw";
-        $smallMapContainer.append('<button class="toggleContextMapBtn" title="Toggle the map">Toggle</button>');
+        $smallMapContainer.append('<button class="toggleContextMapBtn" title="Toggle context map">Toggle</button>');
         var $toggleContextMapBtn = $(".toggleContextMapBtn");
         $toggleContextMapBtn.button({
           icons: {
@@ -504,7 +586,7 @@ if (!org.gigapan.timelapse.Timelapse) {
     };
 
     // Create small context map DOM elements
-    var createContextMapElements = function() {
+    var createMiniMapElements = function() {
       // Create div elements
       smallMapContainer = document.createElement("div");
       smallMap = document.createElement("div");
@@ -575,14 +657,16 @@ if (!org.gigapan.timelapse.Timelapse) {
     };
 
     var setContextMap = function(latlngCenter) {
-      if (isMapMinimized === false) {
-        if (zoomOffset === undefined)
+      if (isMiniMapMinimized === false) {
+        if (!latlngCenter || latlngCenter.lat === undefined || latlngCenter.lng === undefined || zoomOffset === undefined) {
           return;
-        var extendRatio = (mapGeometry.width + mapGeometry.height) / (startHeight + startWidth);
-        if (extendRatio >= 1)
+        }
+        var extendRatio = ((mapGeometry.width + mapGeometry.height) / (startHeight + startWidth) || 0);
+        if (extendRatio >= 1) {
           extendRatio *= 0.6;
-        else
+        } else {
           extendRatio *= -0.5;
+        }
         var newZoom = Math.floor((timelapse.getCurrentZoom() + zoomOffset) + extendRatio);
         if (oldMapZoom != newZoom) {
           oldMapZoom = newZoom;
@@ -591,7 +675,7 @@ if (!org.gigapan.timelapse.Timelapse) {
       }
     };
 
-    var setContextMapLocation = function(latlngNE, latlngSW) {
+    var setMiniMapLocation = function(latlngNE, latlngSW) {
       if (!isHyperwall) {
         var bounds = [
           [latlngSW.lat, latlngSW.lng],
@@ -610,7 +694,7 @@ if (!org.gigapan.timelapse.Timelapse) {
         if (lastMapGeometry !== undefined)
           mapGeometry = $.extend({}, lastMapGeometry);
       }
-      setContextMapSize(mapGeometry.height, mapGeometry.width, true, function() {
+      setMiniMapSize(mapGeometry.height, mapGeometry.width, true, function() {
         // Force map redraw because of container resize
         contextMap.invalidateSize();
       });
@@ -621,33 +705,36 @@ if (!org.gigapan.timelapse.Timelapse) {
         lastMapGeometry = $.extend({}, mapGeometry);
         mapGeometry.height = 20;
         mapGeometry.width = 20;
-        isMapMinimized = true;
+        isMiniMapMinimized = true;
       } else {
         $smallMap.show();
         setContextMapShadow(true);
-        isMapMinimized = false;
+        isMiniMapMinimized = false;
         if (lastMapGeometry !== undefined) {
           mapGeometry = $.extend({}, lastMapGeometry);
         }
       }
       var callBackOnComplete = function() {
-        if (isMapMinimized === true) {
+        if (isMiniMapMinimized === true) {
           $smallMap.hide();
           setContextMapShadow(false);
         }
       };
-      setContextMapSize(mapGeometry.height, mapGeometry.width, true, function() {
+      setMiniMapSize(mapGeometry.height, mapGeometry.width, true, function() {
         // Force map redraw because of container resize
         contextMap.invalidateSize();
       }, callBackOnComplete);
     };
 
+
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // Public methods
     //
-    var setMap = function(bbox, latlngCenter) {
-      if (!tileLayer) return;
+
+    var setMiniMap = function(bbox, latlngCenter) {
+      if (!leafletTileLayer) return;
       var projection = timelapse.getProjection();
       var latlngNE = projection.pointToLatlng({
         "x": bbox.xmin,
@@ -658,15 +745,18 @@ if (!org.gigapan.timelapse.Timelapse) {
         "y": bbox.ymax
       });
       setContextMap(latlngCenter);
-      setContextMapLocation(latlngNE, latlngSW);
+      setMiniMapLocation(latlngNE, latlngSW);
     };
-    this.setMap = setMap;
+    this.setMiniMap = setMiniMap;
+
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // Constructor code
     //
-    createContextMapElements();
-    loadContextMap();
+
+    createMiniMapElements();
+    setupMiniMapForLeaflet();
   };
 })();
